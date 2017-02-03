@@ -239,7 +239,6 @@ void assign_rbs_required (module_id_t Mod_id,
   }
 }
 
-
 // This function scans all CC_ids for a particular UE to find the maximum round index of its HARQ processes
 
 int maxround(module_id_t Mod_id,uint16_t rnti,int frame,sub_frame_t subframe,uint8_t ul_flag )
@@ -357,8 +356,6 @@ void sort_UEs (module_id_t Mod_idP,
 }
 
 
-
-
 // This function assigns pre-available RBS to each UE in specified sub-bands before scheduling is done
 void dlsch_scheduler_pre_processor (module_id_t   Mod_id,
                                     frame_t       frameP,
@@ -369,7 +366,7 @@ void dlsch_scheduler_pre_processor (module_id_t   Mod_id,
 
   unsigned char rballoc_sub[MAX_NUM_CCs][N_RBG_MAX],harq_pid=0,round=0,total_ue_count;
   unsigned char MIMO_mode_indicator[MAX_NUM_CCs][N_RBG_MAX];
-  int                     UE_id, i; 
+  int                     UE_id, i;
   uint16_t                ii,j;
   uint16_t                nb_rbs_required[MAX_NUM_CCs][NUMBER_OF_UE_MAX];
   uint16_t                nb_rbs_required_remaining[MAX_NUM_CCs][NUMBER_OF_UE_MAX];
@@ -410,7 +407,7 @@ void dlsch_scheduler_pre_processor (module_id_t   Mod_id,
     for (i=UE_list->head; i>=0; i=UE_list->next[i]) {
       UE_id = i;
       // Initialize scheduling information for all active UEs
-      
+
 
 
       dlsch_scheduler_pre_processor_reset(Mod_id,
@@ -644,13 +641,13 @@ void dlsch_scheduler_pre_processor (module_id_t   Mod_id,
                         if ((j == N_RBG[CC_id]-1) &&
                             ((PHY_vars_eNB_g[Mod_id][CC_id]->frame_parms.N_RB_DL == 25) ||
                              (PHY_vars_eNB_g[Mod_id][CC_id]->frame_parms.N_RB_DL == 50))) {
-			  
+
                           nb_rbs_required_remaining[CC_id][UE_id] = nb_rbs_required_remaining[CC_id][UE_id] - min_rb_unit[CC_id]+1;
                           ue_sched_ctl->pre_nb_available_rbs[CC_id] = ue_sched_ctl->pre_nb_available_rbs[CC_id] + min_rb_unit[CC_id]-1;
                           nb_rbs_required_remaining[CC_id][UE_id2] = nb_rbs_required_remaining[CC_id][UE_id2] - min_rb_unit[CC_id]+1;
                           ue_sched_ctl2->pre_nb_available_rbs[CC_id] = ue_sched_ctl2->pre_nb_available_rbs[CC_id] + min_rb_unit[CC_id]-1;
                         } else {
-                          
+
 			  nb_rbs_required_remaining[CC_id][UE_id] = nb_rbs_required_remaining[CC_id][UE_id] - 4;
                           ue_sched_ctl->pre_nb_available_rbs[CC_id] = ue_sched_ctl->pre_nb_available_rbs[CC_id] + 4;
                           nb_rbs_required_remaining[CC_id][UE_id2] = nb_rbs_required_remaining[CC_id][UE_id2] - 4;
@@ -739,13 +736,13 @@ void dlsch_scheduler_pre_processor_reset (int module_idP,
 					  int UE_id,
 					  uint8_t  CC_id,
 					  int frameP,
-					  int subframeP,					  
+					  int subframeP,
 					  int N_RBG,
 					  uint16_t nb_rbs_required[MAX_NUM_CCs][NUMBER_OF_UE_MAX],
 					  uint16_t nb_rbs_required_remaining[MAX_NUM_CCs][NUMBER_OF_UE_MAX],
 					  unsigned char rballoc_sub[MAX_NUM_CCs][N_RBG_MAX],
 					  unsigned char MIMO_mode_indicator[MAX_NUM_CCs][N_RBG_MAX])
-  
+
 {
   int i,j;
   UE_list_t *UE_list=&eNB_mac_inst[module_idP].UE_list;
@@ -773,23 +770,23 @@ void dlsch_scheduler_pre_processor_reset (int module_idP,
     case 6:
       ue_sched_ctl->ta_update = eNB_UE_stats->timing_advance_update;
       break;
-      
+
     case 15:
       ue_sched_ctl->ta_update = eNB_UE_stats->timing_advance_update/2;
       break;
-      
+
     case 25:
       ue_sched_ctl->ta_update = eNB_UE_stats->timing_advance_update/4;
       break;
-      
+
     case 50:
       ue_sched_ctl->ta_update = eNB_UE_stats->timing_advance_update/8;
       break;
-      
+
     case 75:
       ue_sched_ctl->ta_update = eNB_UE_stats->timing_advance_update/12;
       break;
-      
+
     case 100:
       ue_sched_ctl->ta_update = eNB_UE_stats->timing_advance_update/16;
       break;
@@ -809,7 +806,7 @@ void dlsch_scheduler_pre_processor_reset (int module_idP,
   ue_sched_ctl->dl_pow_off[CC_id] = 2;
   nb_rbs_required_remaining[CC_id][UE_id] = 0;
 
-#ifdef SF05_LIMIT  
+#ifdef SF05_LIMIT
   switch (N_RBG) {
   case 6:
     sf05_lower=0;
@@ -840,7 +837,7 @@ void dlsch_scheduler_pre_processor_reset (int module_idP,
 #ifdef SF05_LIMIT
     // for avoiding 6+ PRBs around DC in subframe 0-5 (avoid excessive errors)
 
-    if ((subframeP==0 || subframeP==5) && 
+    if ((subframeP==0 || subframeP==5) &&
 	(i>=sf05_lower && i<=sf05_upper))
       rballoc_sub[CC_id][i]=1;
 #endif
@@ -891,7 +888,7 @@ void dlsch_scheduler_pre_processor_allocate (module_id_t   Mod_id,
 	  MIMO_mode_indicator[CC_id][i] = 1;
 	  if (transmission_mode == 5 ) {
 	    ue_sched_ctl->dl_pow_off[CC_id] = 1;
-	  }   
+	  }
 	  nb_rbs_required_remaining[CC_id][UE_id] = nb_rbs_required_remaining[CC_id][UE_id] - min_rb_unit+1;
           ue_sched_ctl->pre_nb_available_rbs[CC_id] = ue_sched_ctl->pre_nb_available_rbs[CC_id] + min_rb_unit - 1;
         } else {
@@ -1216,10 +1213,10 @@ void sort_ue_ul (module_id_t module_idP,int frameP, sub_frame_t subframeP)
     //LOG_I(MAC,"sort ue ul i %d\n",i);
     for (ii=UE_list->next_ul[i]; ii>=0; ii=UE_list->next_ul[ii]) {
       //LOG_I(MAC,"sort ul ue 2 ii %d\n",ii);
- 
+
       UE_id1  = i;
       rnti1 = UE_RNTI(module_idP,UE_id1);
-      
+
       if(rnti1 == NOT_A_RNTI)
 	continue;
       if (UE_list->UE_sched_ctrl[i].ul_out_of_sync == 1)
@@ -1227,10 +1224,10 @@ void sort_ue_ul (module_id_t module_idP,int frameP, sub_frame_t subframeP)
 
       pCCid1 = UE_PCCID(module_idP,UE_id1);
       round1  = maxround(module_idP,rnti1,frameP,subframeP,1);
-      
+
       UE_id2  = ii;
       rnti2 = UE_RNTI(module_idP,UE_id2);
-      
+
       if(rnti2 == NOT_A_RNTI)
         continue;
       if (UE_list->UE_sched_ctrl[UE_id2].ul_out_of_sync == 1)
