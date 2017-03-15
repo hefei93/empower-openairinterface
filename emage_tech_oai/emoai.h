@@ -42,6 +42,9 @@ pthread_spinlock_t rrc_meas_t_lock;
 /* Lock for handling the rrc measurements configuration triggers list. */
 pthread_spinlock_t rrc_m_conf_t_lock;
 
+/* Lock for handling the list of tenants information. */
+pthread_spinlock_t tenants_info_lock;
+
 /* Defines the custom initialization for the OAI abstraction layer, which are to be performed
  * initally when OAI attaches to controller through the agent.
  */
