@@ -30,11 +30,6 @@
   #undef EXMIMO_IOT
 #endif
 
-/* Holds the context of all the UEs maintained at RRC OAI eNB for performing
- * RRC operations.
- */
-struct UE_RRC_proto_ctxt * UE_RRC_proto_ctxt_list = NULL;
-
 /* Number maintained at RRC OAI eNB for lower layer signalling. */
 mui_t * emoai_rrc_eNB_mui;
 
@@ -228,6 +223,8 @@ int rrc_meas_rem_trigg (struct rrc_meas_trigg* ctxt) {
 	RB_REMOVE(rrc_meas_trigg_tree, &rrc_meas_t_head, ctxt);
 	/* Free the measurement context. */
 	if (ctxt) {
+		meas_object__free_unpacked(ctxt->m_obj, 0);
+		report_config__free_unpacked(ctxt->r_conf, 0);
 		free(ctxt);
 	}
 
@@ -249,7 +246,7 @@ int rrc_meas_rem_ue_all_trigg (uint32_t rnti) {
 	return 0;
 }
 
-int rrc_meas_add_trigg (struct rrc_meas_trigg* ctxt) {
+int rrc_meas_add_trigg (struct rrc_meas_trigg * ctxt) {
 
 	if (ctxt == NULL)
 		return -1;
