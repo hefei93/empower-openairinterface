@@ -33,7 +33,7 @@
  */
 
 /** \fn void add_ue_spec_dci(DCI_PDU *DCI_pdu,void *pdu,rnti_t rnti,unsigned char dci_size_bytes,unsigned char aggregation,unsigned char dci_size_bits,unsigned char dci_fmt,uint8_t ra_flag);
-\brief 
+\brief
 
 */
 void add_ue_spec_dci(DCI_PDU *DCI_pdu,void *pdu,rnti_t rnti,unsigned char dci_size_bytes,unsigned char aggregation,unsigned char dci_size_bits,unsigned char dci_fmt,uint8_t ra_flag);
@@ -159,6 +159,10 @@ int mac_init_global_param(void);
 void mac_top_cleanup(void);
 
 void mac_UE_out_of_sync_ind(module_id_t module_idP,frame_t frameP, uint16_t eNB_index);
+
+void store_dlsch_buffer (module_id_t Mod_id,
+                         frame_t     frameP,
+                         sub_frame_t subframeP);
 
 void dlsch_scheduler_pre_processor_reset (int module_idP,int UE_id,
     uint8_t  CC_id,
@@ -325,10 +329,10 @@ int8_t find_active_UEs_with_traffic(module_id_t module_idP);
 void init_CCE_table(int module_idP,int CC_idP);
 
 int get_nCCE_offset(int *CCE_table,
-		    const unsigned char L, 
-		    const int nCCE, 
-		    const int common_dci, 
-		    const unsigned short rnti, 
+		    const unsigned char L,
+		    const int nCCE,
+		    const int common_dci,
+		    const unsigned short rnti,
 		    const unsigned char subframe);
 
 int allocate_CCEs(int module_idP,

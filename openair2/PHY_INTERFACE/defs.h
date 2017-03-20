@@ -314,21 +314,21 @@ typedef struct {
 
   /// Function for UE to process the timing advance command
   void (*process_timing_advance)(module_id_t Mod_id,uint8_t CC_id, int16_t timing_advance);
-  
-  /// Function for MAC to get the UE stats from the PHY   
+
+  /// Function for MAC to get the UE stats from the PHY
   LTE_eNB_UE_stats* (*get_eNB_UE_stats)(module_id_t Mod_id, uint8_t CC_id, rnti_t rnti);
 
   /// get the frame parameters from the PHY
   LTE_DL_FRAME_PARMS* (*get_lte_frame_parms)(module_id_t Mod_id, uint8_t CC_id);
-  
+
   /// get the Multiuser mimo mode
   MU_MIMO_mode* (*get_mu_mimo_mode) (module_id_t Mod_id, uint8_t CC_id, rnti_t rnti);
 
   /// get the delta TF for Uplink Power Control Calculation
   int16_t (*get_hundred_times_delta_TF) (module_id_t module_idP, uint8_t CC_id, rnti_t rnti, uint8_t harq_pid);
-  /// get target PUSCH received power 
+  /// get target PUSCH received power
   int16_t (*get_target_pusch_rx_power) (module_id_t module_idP, uint8_t CC_id);
-  /// get target PUSCH received power 
+  /// get target PUSCH received power
   int16_t (*get_target_pucch_rx_power) (module_id_t module_idP, uint8_t CC_id);
 
   unsigned char is_cluster_head;
@@ -339,13 +339,18 @@ typedef struct {
   /// PHY Frame Configuration
   LTE_DL_FRAME_PARMS *frame_parms;
 
-  uint8_t (*get_prach_prb_offset)(LTE_DL_FRAME_PARMS *frame_parms, uint8_t tdd_mapindex, uint16_t Nf); 
+  uint8_t (*get_prach_prb_offset)(LTE_DL_FRAME_PARMS *frame_parms, uint8_t tdd_mapindex, uint16_t Nf);
 
   int (*is_prach_subframe)(LTE_DL_FRAME_PARMS *frame_parms,frame_t frame, uint8_t subframe);
 
   /// ICIC algos
   uint8_t (*get_SB_size)(uint8_t n_rb_dl);
   ///end ALU's algo
+
+  #ifdef RAN_SHARING_FLAG
+    /// Invoke dlsch scheduler pre-processor procedure for new subframe
+    void (*dlsch_scheduler_pre_processor)(module_id_t Mod_id, frame_t frameP, sub_frame_t subframeP, int N_RBG[MAX_NUM_CCs], int *mbsfn_flag);
+  #endif /* RAN_SHARING_FLAG */
 
 } MAC_xface;
 

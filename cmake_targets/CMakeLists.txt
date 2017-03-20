@@ -622,6 +622,7 @@ add_boolean_option(MESSAGE_CHART_GENERATOR_PHY     False "trace some PHY exchang
 
 add_boolean_option(ENB_AGENT                   True         "enable eNB agent to inteface with a SDN contrller")
 add_boolean_option(EMAGE_AGENT                 True         "enable EMAge agent to inteface with a controller")
+add_boolean_option(RAN_SHARING_FLAG            False         "enable RAN slicing in eNB")
 ########################
 # Include order
 ##########################
@@ -767,9 +768,9 @@ include_directories("${OPENAIR_BIN_DIR}")
 # the internal rule is to use generic names such as defs.h
 # but to make it uniq name as adding the relative path in the include directtive
 # example: #include "RRC/LITE/defs.h"
-#find_path (include_dirs_all *.h ${OPENAIR_DIR})
-#find_path (include_dirs_all *.h PATHS /usr/include NO_CMAKE_PATH)
-#include_directories("${include_dirs_all}")
+# find_path (include_dirs_all *.h ${OPENAIR_DIR})
+# find_path (include_dirs_all *.h PATHS /usr/include NO_CMAKE_PATH)
+# include_directories("${include_dirs_all}")
 
 # Legacy exact order
 if(ENB_MODE)
@@ -834,41 +835,6 @@ include_directories("${OPENAIR2_DIR}/RRC/LITE/MESSAGES")
 include_directories("${OPENAIR3_DIR}/GTPV1-U/nw-gtpv1u/shared")
 include_directories("${OPENAIR3_DIR}/GTPV1-U/nw-gtpv1u/include")
 include_directories("${OPENAIR_DIR}")
-
-# CNET EMAGE Library
-#####################
-Message("EMAGE_AGENT flag  is ${EMAGE_AGENT}")
-
-if (${EMAGE_AGENT})
-
-  FIND_LIBRARY(EMAGENT_LIBRARY NAMES "emagent" REQUIRED)
-  FIND_LIBRARY(EMPROTO_LIBRARY NAMES "emproto" REQUIRED)
-
-  if(NOT EMPROTO_LIBRARY)
-    message(FATAL_ERROR "proto library not found")
-  endif()
-
-  if(NOT EMAGENT_LIBRARY)
-    message(FATAL_ERROR "agent library not found")
-  endif()
-
-  set(AGENT_PROTO_LIB -lemproto -lemagent)
-
-  set(CNET_EMAGE_TECH_OAI_DIR ${OPENAIR_DIR}/emage_tech_oai)
-  include_directories (${CNET_EMAGE_TECH_OAI_DIR})
-  add_library(WRAP_LIB
-    ${CNET_EMAGE_TECH_OAI_DIR}/emoai_common.c
-    ${CNET_EMAGE_TECH_OAI_DIR}/emoai_config.c
-    ${CNET_EMAGE_TECH_OAI_DIR}/emoai_rrc_measurements.c
-    ${CNET_EMAGE_TECH_OAI_DIR}/emoai.c
-  )
-
-  set(AGENT_WRAP_LIB WRAP_LIB)
-  set(PROTOBUF_LIB "protobuf-c")
-
-endif(${EMAGE_AGENT})
-
-##########################
 
 # Utilities Library
 ################
@@ -1645,6 +1611,66 @@ add_custom_target (
 # Hack on a test of asn1c version (already dirty)
 add_definitions(-DASN1_MINIMUM_VERSION=924)
 
+################################################################################
+# CNET EMAGE Library
+################################################################################
+Message("EMAGE_AGENT flag  is ${EMAGE_AGENT}")
+
+if (${EMAGE_AGENT})
+
+  FIND_LIBRARY(EMAGENT_LIBRARY NAMES "emagent" REQUIRED)
+  FIND_LIBRARY(EMPROTO_LIBRARY NAMES "emproto" REQUIRED)
+
+  if(NOT EMPROTO_LIBRARY)
+    message(FATAL_ERROR "proto library not found")
+  endif()
+
+  if(NOT EMAGENT_LIBRARY)
+    message(FATAL_ERROR "agent library not found")
+  endif()
+
+  set(AGENT_PROTO_LIB -lemproto -lemagent)
+
+  set(CNET_EMAGE_TECH_OAI_DIR ${OPENAIR_DIR}/emage_tech_oai)
+  include_directories (${CNET_EMAGE_TECH_OAI_DIR})
+  add_library(WRAP_LIB
+    ${CNET_EMAGE_TECH_OAI_DIR}/emoai_common.c
+    ${CNET_EMAGE_TECH_OAI_DIR}/emoai_config.c
+    ${CNET_EMAGE_TECH_OAI_DIR}/emoai_rrc_measurements.c
+    ${CNET_EMAGE_TECH_OAI_DIR}/emoai.c
+  )
+
+  set(AGENT_WRAP_LIB WRAP_LIB)
+  set(PROTOBUF_LIB "protobuf-c")
+
+endif(${EMAGE_AGENT})
+
+################################################################################
+
+################################################################################
+# RAN SHARING FLAG
+################################################################################
+Message("RAN SHARING flag  is ${RAN_SHARING_FLAG}")
+
+if (${RAN_SHARING_FLAG})
+
+  set(RAN_SHARING_CORE_DIR ${OPENAIR_DIR}/RAN_sharing/core)
+  set(RAN_SHARING_UE_SCHED_DIR ${OPENAIR_DIR}/RAN_sharing/ue_schedulers)
+
+  include_directories (${RAN_SHARING_CORE_DIR})
+  include_directories (${RAN_SHARING_UE_SCHED_DIR})
+
+  add_library(RAN_SHARING
+    ${RAN_SHARING_CORE_DIR}/plugin_sched_pre_processor.c
+    ${RAN_SHARING_UE_SCHED_DIR}/rr.c
+  )
+
+  set(RAN_SHARING_LIB RAN_SHARING)
+
+endif(${RAN_SHARING_FLAG})
+
+################################################################################
+
 #################################
 # add executables for operation
 #################################
@@ -1687,6 +1713,10 @@ target_link_libraries (lte-softmodem ${T_LIB})
 if (${EMAGE_AGENT})
   target_link_libraries (lte-softmodem ${AGENT_WRAP_LIB} ${AGENT_PROTO_LIB} ${PROTOBUF_LIB})
 endif (${EMAGE_AGENT})
+if (${RAN_SHARING_FLAG})
+  target_link_libraries (lte-softmodem ${RAN_SHARING_LIB})
+endif (${RAN_SHARING_FLAG})
+
 
 
 # lte-softmodem-nos1 is both eNB and UE implementation
@@ -1725,6 +1755,9 @@ target_link_libraries (lte-softmodem-nos1 ${T_LIB})
 if (${EMAGE_AGENT})
   target_link_libraries (lte-softmodem-nos1 ${AGENT_WRAP_LIB} ${AGENT_PROTO_LIB} ${PROTOBUF_LIB})
 endif (${EMAGE_AGENT})
+if (${RAN_SHARING_FLAG})
+  target_link_libraries (lte-softmodem-nos1 ${RAN_SHARING_LIB})
+endif (${RAN_SHARING_FLAG})
 
 
 # rrh
@@ -1835,6 +1868,9 @@ target_link_libraries (oaisim ${T_LIB})
 if (${EMAGE_AGENT})
   target_link_libraries (oaisim ${AGENT_WRAP_LIB} ${AGENT_PROTO_LIB} ${PROTOBUF_LIB})
 endif (${EMAGE_AGENT})
+if (${RAN_SHARING_FLAG})
+  target_link_libraries (oaisim ${RAN_SHARING_LIB})
+endif (${RAN_SHARING_FLAG})
 
 
 # A all in one network simulator
@@ -1878,6 +1914,9 @@ target_link_libraries (oaisim_nos1 ${T_LIB})
 if (${EMAGE_AGENT})
   target_link_libraries (oaisim_nos1 ${AGENT_WRAP_LIB} ${AGENT_PROTO_LIB} ${PROTOBUF_LIB})
 endif (${EMAGE_AGENT})
+if (${RAN_SHARING_FLAG})
+  target_link_libraries (oaisim_nos1 ${RAN_SHARING_LIB})
+endif (${RAN_SHARING_FLAG})
 
 
 
@@ -1898,6 +1937,9 @@ foreach(myExe dlsim ulsim pbchsim scansim mbmssim pdcchsim pucchsim prachsim syn
   if (${EMAGE_AGENT})
     target_link_libraries (${myExe} ${AGENT_WRAP_LIB} ${AGENT_PROTO_LIB} ${PROTOBUF_LIB})
   endif (${EMAGE_AGENT})
+  if (${RAN_SHARING_FLAG})
+    target_link_libraries (${myExe} ${RAN_SHARING_LIB})
+  endif (${RAN_SHARING_FLAG})
 endforeach(myExe)
 
 add_executable(test_epc_generate_scenario
@@ -1916,6 +1958,9 @@ target_link_libraries (test_epc_generate_scenario
 if (${EMAGE_AGENT})
   target_link_libraries (test_epc_generate_scenario ${AGENT_WRAP_LIB} ${AGENT_PROTO_LIB} ${PROTOBUF_LIB})
 endif (${EMAGE_AGENT})
+if (${RAN_SHARING_FLAG})
+  target_link_libraries (test_epc_generate_scenario ${RAN_SHARING_LIB})
+endif (${RAN_SHARING_FLAG})
 
 add_executable(test_epc_play_scenario
   ${OPENAIR3_DIR}/TEST/EPC_TEST/play_scenario.c
@@ -1940,6 +1985,9 @@ target_link_libraries (test_epc_play_scenario
 if (${EMAGE_AGENT})
   target_link_libraries (test_epc_play_scenario ${AGENT_WRAP_LIB} ${AGENT_PROTO_LIB} ${PROTOBUF_LIB})
 endif (${EMAGE_AGENT})
+if (${RAN_SHARING_FLAG})
+  target_link_libraries (test_epc_play_scenario ${RAN_SHARING_LIB})
+endif (${RAN_SHARING_FLAG})
 
 
 #unitary tests for Core NEtwork pieces

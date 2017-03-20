@@ -356,6 +356,7 @@ void sort_UEs (module_id_t Mod_idP,
 }
 
 
+
 // This function assigns pre-available RBS to each UE in specified sub-bands before scheduling is done
 void dlsch_scheduler_pre_processor (module_id_t   Mod_id,
                                     frame_t       frameP,
@@ -729,6 +730,7 @@ void dlsch_scheduler_pre_processor (module_id_t   Mod_id,
     }
   }
 }
+
 
 #define SF05_LIMIT 1
 

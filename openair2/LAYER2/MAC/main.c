@@ -63,6 +63,10 @@
 
 #include "SCHED/defs.h"
 
+#ifdef RAN_SHARING_FLAG
+  #include "plugin_sched_pre_processor.h"
+#endif /* RAN_SHARING_FLAG */
+
 void dl_phy_sync_success(module_id_t   module_idP,
                          frame_t       frameP,
                          unsigned char eNB_index,
@@ -449,21 +453,24 @@ int l2_init(LTE_DL_FRAME_PARMS *frame_parms,int eMBMS_active, char *uecap_xer,ui
   mac_xface->macphy_exit=(void (*)(const char*)) exit;
 #endif
   LOG_I(MAC,"[MAIN] init eNB MAC functions  \n");
-  mac_xface->eNB_dlsch_ulsch_scheduler = eNB_dlsch_ulsch_scheduler;
-  mac_xface->get_dci_sdu               = get_dci_sdu;
-  mac_xface->fill_rar                  = fill_rar;
-  mac_xface->initiate_ra_proc          = initiate_ra_proc;
-  mac_xface->cancel_ra_proc            = cancel_ra_proc;
-  mac_xface->set_msg3_subframe         = set_msg3_subframe;
-  mac_xface->SR_indication             = SR_indication;
-  mac_xface->UL_failure_indication     = UL_failure_indication;
-  mac_xface->rx_sdu                    = rx_sdu;
-  mac_xface->get_dlsch_sdu             = get_dlsch_sdu;
-  mac_xface->get_eNB_UE_stats          = get_UE_stats;
-  mac_xface->get_transmission_mode     = get_transmission_mode;
-  mac_xface->get_rballoc               = get_rballoc;
-  mac_xface->get_nb_rb                 = conv_nprb;
-  mac_xface->get_prb                   = get_prb;
+  mac_xface->eNB_dlsch_ulsch_scheduler      = eNB_dlsch_ulsch_scheduler;
+  #ifdef RAN_SHARING_FLAG
+    mac_xface->dlsch_scheduler_pre_processor  = plugin_sched_dlsch_pre_processor;
+  #endif /* RAN_SHARING_FLAG */
+  mac_xface->get_dci_sdu                    = get_dci_sdu;
+  mac_xface->fill_rar                       = fill_rar;
+  mac_xface->initiate_ra_proc               = initiate_ra_proc;
+  mac_xface->cancel_ra_proc                 = cancel_ra_proc;
+  mac_xface->set_msg3_subframe              = set_msg3_subframe;
+  mac_xface->SR_indication                  = SR_indication;
+  mac_xface->UL_failure_indication          = UL_failure_indication;
+  mac_xface->rx_sdu                         = rx_sdu;
+  mac_xface->get_dlsch_sdu                  = get_dlsch_sdu;
+  mac_xface->get_eNB_UE_stats               = get_UE_stats;
+  mac_xface->get_transmission_mode          = get_transmission_mode;
+  mac_xface->get_rballoc                    = get_rballoc;
+  mac_xface->get_nb_rb                      = conv_nprb;
+  mac_xface->get_prb                        = get_prb;
   //  mac_xface->get_SB_size               = Get_SB_size;
   mac_xface->get_subframe_direction    = get_subframe_direction;
   mac_xface->Msg3_transmitted          = Msg3_tx;

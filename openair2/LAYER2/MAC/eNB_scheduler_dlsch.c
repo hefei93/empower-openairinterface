@@ -429,8 +429,8 @@ schedule_ue_spec(
   int                   N_RBG[MAX_NUM_CCs];
   unsigned char         aggregation;
   mac_rlc_status_resp_t rlc_status;
-  unsigned char         header_len_dcch=0, header_len_dcch_tmp=0; 
-  unsigned char         header_len_dtch=0, header_len_dtch_tmp=0, header_len_dtch_last=0; 
+  unsigned char         header_len_dcch=0, header_len_dcch_tmp=0;
+  unsigned char         header_len_dtch=0, header_len_dtch_tmp=0, header_len_dtch_last=0;
   unsigned char         ta_len=0;
   unsigned char         sdu_lcids[NB_RB_MAX],lcid,offset,num_sdus=0;
   uint16_t              nb_rb,nb_rb_temp,total_nb_available_rb[MAX_NUM_CCs],nb_available_rb;
@@ -489,11 +489,19 @@ schedule_ue_spec(
 
   VCD_SIGNAL_DUMPER_DUMP_FUNCTION_BY_NAME(VCD_SIGNAL_DUMPER_FUNCTIONS_DLSCH_PREPROCESSOR,VCD_FUNCTION_IN);
   start_meas(&eNB->schedule_dlsch_preprocessor);
-  dlsch_scheduler_pre_processor(module_idP,
-                                frameP,
-                                subframeP,
-                                N_RBG,
-                                mbsfn_flag);
+  #ifdef RAN_SHARING_FLAG
+    mac_xface->dlsch_scheduler_pre_processor(module_idP,
+                                          frameP,
+                                          subframeP,
+                                          N_RBG,
+                                          mbsfn_flag);
+  #else
+    dlsch_scheduler_pre_processor(module_idP,
+                              frameP,
+                              subframeP,
+                              N_RBG,
+                              mbsfn_flag);
+  #endif /* RAN_SHARING_FLAG */
   stop_meas(&eNB->schedule_dlsch_preprocessor);
   VCD_SIGNAL_DUMPER_DUMP_FUNCTION_BY_NAME(VCD_SIGNAL_DUMPER_FUNCTIONS_DLSCH_PREPROCESSOR,VCD_FUNCTION_OUT);
 
@@ -915,14 +923,14 @@ schedule_ue_spec(
 	// lcid has to be sorted before the actual allocation (similar struct as ue_list).
 	for (lcid=NB_RB_MAX-1; lcid>=DTCH ; lcid--){
 	  // TBD: check if the lcid is active
-	  
-	  header_len_dtch+=3; 
+
+	  header_len_dtch+=3;
 	  header_len_dtch_last=3;
 	  LOG_D(MAC,"[eNB %d], Frame %d, DTCH%d->DLSCH, Checking RLC status (tbs %d, len %d)\n",
 		module_idP,frameP,lcid,TBS,
 		TBS-ta_len-header_len_dcch-sdu_length_total-header_len_dtch);
-	  
-	  if (TBS-ta_len-header_len_dcch-sdu_length_total-header_len_dtch > 0 ) { // NN: > 2 ? 
+
+	  if (TBS-ta_len-header_len_dcch-sdu_length_total-header_len_dtch > 0 ) { // NN: > 2 ?
 	    rlc_status = mac_rlc_status_ind(module_idP,
 					    rnti,
 					    module_idP,
@@ -931,10 +939,10 @@ schedule_ue_spec(
 					    MBMS_FLAG_NO,
 					    lcid,
 					    TBS-ta_len-header_len_dcch-sdu_length_total-header_len_dtch);
-	   
+
 
 	    if (rlc_status.bytes_in_buffer > 0) {
-	      
+
 	      LOG_D(MAC,"[eNB %d][USER-PLANE DEFAULT DRB] Frame %d : DTCH->DLSCH, Requesting %d bytes from RLC (lcid %d total hdr len %d)\n",
 		    module_idP,frameP,TBS-header_len_dcch-sdu_length_total-header_len_dtch,lcid, header_len_dtch);
 	      sdu_lengths[num_sdus] = mac_rlc_data_req(module_idP,
@@ -965,15 +973,15 @@ schedule_ue_spec(
 	  } // no TBS left
 	  else {
 	    header_len_dtch-=3;
-	    break; 
+	    break;
 	  }
 	}
 	if (header_len_dtch == 0 )
 	  header_len_dtch_last= 0;
-	// there is at least one SDU 
+	// there is at least one SDU
 	// if (num_sdus > 0 ){
 	if ((sdu_length_total + header_len_dcch + header_len_dtch )> 0) {
-	  
+
 	  // Now compute number of required RBs for total sdu length
 	  // Assume RAH format 2
 	  // adjust  header lengths
@@ -982,7 +990,7 @@ schedule_ue_spec(
 	  if (header_len_dtch==0) {
 	    header_len_dcch = (header_len_dcch >0) ? 1 : 0;//header_len_dcch;  // remove length field
 	  } else {
-	    header_len_dtch_last-=1; // now use it to find how many bytes has to be removed for the last MAC SDU 
+	    header_len_dtch_last-=1; // now use it to find how many bytes has to be removed for the last MAC SDU
 	    header_len_dtch = (header_len_dtch > 0) ? header_len_dtch - header_len_dtch_last  :header_len_dtch;     // remove length field for the last SDU
 	  }
 
