@@ -25,7 +25,7 @@
 #include "openair2/LAYER2/MAC/extern.h"
 #include "openair1/PHY/extern.h"
 
-int emoai_create_new_thread (void * (*func)(void *), void * arg) {
+int emoai_create_new_thread (void *(*func)(void *), void *arg) {
 
 	int s = 0;
 	/* POSIX thread variable. */
@@ -99,23 +99,23 @@ int emoai_get_num_ues (void) {
 }
 
 uint32_t emoai_get_b_id (void) {
-	const Enb_properties_array_t* enb_properties = enb_config_get();
+	const Enb_properties_array_t *enb_properties = enb_config_get();
 	return enb_properties->properties[DEFAULT_ENB_ID]->eNB_id;
 }
 
 float emoai_get_operating_dl_freq (ccid_t cc_id) {
-	const Enb_properties_array_t* enb_properties = enb_config_get();
+	const Enb_properties_array_t *enb_properties = enb_config_get();
 	return (enb_properties->properties[DEFAULT_ENB_ID]->
 										downlink_frequency[cc_id] / 1000000);
 }
 
 int emoai_get_operating_band (ccid_t cc_id) {
-	const Enb_properties_array_t* enb_properties = enb_config_get();
+	const Enb_properties_array_t *enb_properties = enb_config_get();
 	return enb_properties->properties[DEFAULT_ENB_ID]->eutra_band[cc_id];
 }
 
 int emoai_get_eNB_dupl_mode (ccid_t cc_id) {
-	const Enb_properties_array_t* enb_properties = enb_config_get();
+	const Enb_properties_array_t *enb_properties = enb_config_get();
 	if (enb_properties->properties[DEFAULT_ENB_ID]->frame_type[cc_id] ==
 																		FDD) {
 		return DD_MODE__DDM_FDD;
@@ -130,7 +130,7 @@ uint32_t emoai_get_ue_crnti (ueid_t ue_id) {
 }
 
 uint64_t emoai_get_ue_imsi (ueid_t ue_id) {
-	struct rrc_eNB_ue_context_s* ue_context_p = emoai_get_ue_context(ue_id);
+	struct rrc_eNB_ue_context_s *ue_context_p = emoai_get_ue_context(ue_id);
 
 	if (ue_context_p != NULL && (&ue_context_p->ue_context != NULL)) {
 		return ue_context_p->ue_context.ue_imsi;
@@ -139,7 +139,7 @@ uint64_t emoai_get_ue_imsi (ueid_t ue_id) {
 }
 
 uint32_t emoai_get_selected_plmn_id (ueid_t ue_id) {
-	struct rrc_eNB_ue_context_s* ue_context_p = emoai_get_ue_context(ue_id);
+	struct rrc_eNB_ue_context_s *ue_context_p = emoai_get_ue_context(ue_id);
 
 	if (ue_context_p != NULL && (&ue_context_p->ue_context != NULL)) {
 		return ue_context_p->ue_context.plmn_id;
@@ -179,7 +179,7 @@ struct rrc_eNB_ue_context_s* emoai_get_ue_context (ueid_t ue_id) {
 }
 
 int emoai_get_ue_state (ueid_t ue_id) {
-	struct rrc_eNB_ue_context_s* ue_context_p = emoai_get_ue_context(ue_id);
+	struct rrc_eNB_ue_context_s *ue_context_p = emoai_get_ue_context(ue_id);
 
 	if (ue_context_p != NULL && (&ue_context_p->ue_context != NULL)) {
 		return ue_context_p->ue_context.Status;
@@ -210,7 +210,7 @@ int emoai_get_meas_gap_config (ueid_t ue_id) {
 }
 
 int emoai_get_meas_gap_config_offset (ueid_t ue_id) {
-	struct rrc_eNB_ue_context_s* ue_context_p = emoai_get_ue_context(ue_id);
+	struct rrc_eNB_ue_context_s *ue_context_p = emoai_get_ue_context(ue_id);
 
 	if(ue_context_p != NULL &&
 		ue_context_p->ue_context.measGapConfig != NULL &&
@@ -232,7 +232,7 @@ int emoai_get_meas_gap_config_offset (ueid_t ue_id) {
 }
 
 int emoai_get_num_bands (ueid_t ue_id) {
-	struct rrc_eNB_ue_context_s* ue_context_p = emoai_get_ue_context(ue_id);
+	struct rrc_eNB_ue_context_s *ue_context_p = emoai_get_ue_context(ue_id);
 
 	if(ue_context_p != NULL &&
 		ue_context_p->ue_context.UE_EUTRA_Capability != NULL) {
@@ -243,7 +243,7 @@ int emoai_get_num_bands (ueid_t ue_id) {
 }
 
 uint32_t* emoai_get_bands (ueid_t ue_id) {
-	struct rrc_eNB_ue_context_s* ue_context_p = emoai_get_ue_context(ue_id);
+	struct rrc_eNB_ue_context_s *ue_context_p = emoai_get_ue_context(ue_id);
 	uint32_t *bands = NULL;
 
 	if(ue_context_p != NULL &&
@@ -370,7 +370,7 @@ int emoai_is_interF_ANR_supp (ueid_t ue_id) {
 
 int emoai_is_intraF_neighCellSIacq_supp (ueid_t ue_id) {
 	if (emoai_get_access_release_vers(ue_id) > 8) {
-		struct rrc_eNB_ue_context_s* ue = emoai_get_ue_context(ue_id);
+		struct rrc_eNB_ue_context_s *ue = emoai_get_ue_context(ue_id);
 		struct UE_EUTRA_Capability_v920_IEs	*nonCriticalExtension;
 		nonCriticalExtension = ue->ue_context.UE_EUTRA_Capability->
 														nonCriticalExtension;
@@ -389,7 +389,7 @@ int emoai_is_intraF_neighCellSIacq_supp (ueid_t ue_id) {
 
 int emoai_is_interF_neighCellSIacq_supp (ueid_t ue_id) {
 	if (emoai_get_access_release_vers(ue_id) > 8) {
-		struct rrc_eNB_ue_context_s* ue = emoai_get_ue_context(ue_id);
+		struct rrc_eNB_ue_context_s *ue = emoai_get_ue_context(ue_id);
 		struct UE_EUTRA_Capability_v920_IEs	*nonCriticalExtension;
 		nonCriticalExtension = ue->ue_context.UE_EUTRA_Capability->
 														nonCriticalExtension;
@@ -406,7 +406,7 @@ int emoai_is_interF_neighCellSIacq_supp (ueid_t ue_id) {
 	return 0;
 }
 
-int emoai_handle_ue_down (uint32_t * rnti) {
+int emoai_handle_ue_down (uint32_t *rnti) {
 
 	struct rrc_m_conf_trigg *rrc_mconf_ctxt = NULL;
 

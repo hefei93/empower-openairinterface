@@ -47,7 +47,7 @@ struct rrc_meas_params {
  *
  * Returns 0 on success, or a negative error code on failure.
  */
-int emoai_trig_rrc_measurements (struct rrc_meas_params * p);
+int emoai_trig_rrc_measurements (struct rrc_meas_params *p);
 
 /* Request parameters related to RRC measurements trigger.
  */
@@ -70,8 +70,8 @@ struct rrc_meas_trigg {
 /* Compares two triggers based on UE rnti and MeasId.
  */
 int rrc_meas_comp_trigg (
-	struct rrc_meas_trigg * t1,
-	struct rrc_meas_trigg * t2);
+	struct rrc_meas_trigg *t1,
+	struct rrc_meas_trigg *t2);
 
 /* Fetches RRC measurement trigger context based on UE rnti and MeasId.
  */
@@ -79,7 +79,7 @@ struct rrc_meas_trigg* rrc_meas_get_trigg (uint32_t rnti, int measId);
 
 /* Removes RRC measurement trigger context from tree.
  */
-int rrc_meas_rem_trigg (struct rrc_meas_trigg* ctxt);
+int rrc_meas_rem_trigg (struct rrc_meas_trigg *ctxt);
 
 /* Removes all the RRC measurement trigger contexts from tree for a particular
  * UE.
@@ -88,7 +88,7 @@ int rrc_meas_rem_ue_all_trigg (uint32_t rnti);
 
 /* Insert RRC measurement triggger context into tree.
  */
-int rrc_meas_add_trigg (struct rrc_meas_trigg* ctxt);
+int rrc_meas_add_trigg (struct rrc_meas_trigg *ctxt);
 
 /* Holds all the information about Bandwidth of each of EUTRA TDD bands.
  */
@@ -184,7 +184,7 @@ int emoai_comp_req_freq (uint32_t earfcnR, uint32_t earfcnC);
  * 		-1 -> requested EUTRA measurement object leads to erroneous condition
  * 		1 -> EUTRA measurement objects are equal
  */
-int emoai_comp_EUTRA_measObj (MeasObjEUTRA * req_mo, MeasObjEUTRA * ctxt_mo);
+int emoai_comp_EUTRA_measObj (MeasObjEUTRA *req_mo, MeasObjEUTRA *ctxt_mo);
 
 /* Validates requested measurement object parameters and also checks whether
  * similar measurement object already exists.
@@ -194,7 +194,7 @@ int emoai_comp_EUTRA_measObj (MeasObjEUTRA * req_mo, MeasObjEUTRA * ctxt_mo);
  * 		(> 0) -> measurement object already exist and is valid. Return value
  *				 is measurement object identifier of existing object
  */
-int rrc_meas_val_trigg_measObj (ueid_t ue_id, MeasObject * m_obj);
+int rrc_meas_val_trigg_measObj (ueid_t ue_id, MeasObject *m_obj);
 
 /* Compares requested EUTRA report configuration with that of already existing
  * EUTRA report configurations.
@@ -203,7 +203,7 @@ int rrc_meas_val_trigg_measObj (ueid_t ue_id, MeasObject * m_obj);
  * 		-1 -> requested EUTRA report configuration leads to erroneous condition
  * 		1 -> EUTRA report configurations are equal
  */
-int emoai_comp_EUTRA_repConf (RepConfEUTRA * req_rc, RepConfEUTRA * ctxt_rc);
+int emoai_comp_EUTRA_repConf (RepConfEUTRA *req_rc, RepConfEUTRA *ctxt_rc);
 
 /* Validates requested report configuration parameters and also checks whether
  * similar report configuration already exists.
@@ -216,12 +216,12 @@ int emoai_comp_EUTRA_repConf (RepConfEUTRA * req_rc, RepConfEUTRA * ctxt_rc);
 int rrc_meas_val_trigg_repConf (
 	ueid_t ue_id,
 	uint32_t mo_freq,
-	ReportConfig * r_conf);
+	ReportConfig *r_conf);
 
 /* Update the contents of existing measurement object if the requested
  * measurement object has the same carrier frequency as the existing object.
  */
-int rrc_meas_trigg_update_measObj (int mo_id, MeasObject * m_obj);
+int rrc_meas_trigg_update_measObj (int mo_id, MeasObject *m_obj);
 
 /* Receives RRC measurements request from controller and process it.
  * Sends back a success reply upon successfully processing the request, else
@@ -230,14 +230,14 @@ int rrc_meas_trigg_update_measObj (int mo_id, MeasObject * m_obj);
  * Returns 0 on success, or a negative error code on failure.
  */
 int emoai_RRC_measurements (
-	EmageMsg * request,
-	EmageMsg ** reply,
+	EmageMsg *request,
+	EmageMsg **reply,
 	unsigned int trigger_id);
 
 /* Stores the pointer to mui variable stored in RRC eNB of OAI.
  * This is used to in lower layer signalling. (OAI specific)
  */
-int emoai_store_rrc_eNB_mui (mui_t * mui);
+int emoai_store_rrc_eNB_mui (mui_t *mui);
 
 /* Standard RRC reconfiguration stack operation for a UE in order to reconfigure
  * its RRC measurements.
@@ -248,10 +248,10 @@ int emoai_RRC_meas_reconf (
 	uint32_t rnti,
 	int measId_add,
 	int measId_rem,
-	MeasObject * m_obj,
-	ReportConfig * r_conf);
+	MeasObject *m_obj,
+	ReportConfig *r_conf);
 
-int rrc_meas_req (uint32_t * rnti);
+int rrc_meas_req (uint32_t *rnti);
 
 /* RB Tree holding all request parameters related to RRC measurements trigger.
  */

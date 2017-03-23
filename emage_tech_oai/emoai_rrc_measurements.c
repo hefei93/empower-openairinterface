@@ -31,7 +31,7 @@
 #endif
 
 /* Number maintained at RRC OAI eNB for lower layer signalling. */
-mui_t * emoai_rrc_eNB_mui;
+mui_t *emoai_rrc_eNB_mui;
 
 /* List of all LTE TDD band numbers. */
 int eutra_tdd_bands [14] = {
@@ -190,8 +190,8 @@ RB_GENERATE(
 /******************************************************************************/
 
 int rrc_meas_comp_trigg (
-	struct rrc_meas_trigg * t1,
-	struct rrc_meas_trigg * t2) {
+	struct rrc_meas_trigg *t1,
+	struct rrc_meas_trigg *t2) {
 
 	if (t1->t_id > t2->t_id) {
 		return 1;
@@ -215,7 +215,7 @@ struct rrc_meas_trigg* rrc_meas_get_trigg (uint32_t rnti, int measId) {
 	return NULL;
 }
 
-int rrc_meas_rem_trigg (struct rrc_meas_trigg* ctxt) {
+int rrc_meas_rem_trigg (struct rrc_meas_trigg *ctxt) {
 
 	if (ctxt == NULL)
 		return -1;
@@ -246,7 +246,7 @@ int rrc_meas_rem_ue_all_trigg (uint32_t rnti) {
 	return 0;
 }
 
-int rrc_meas_add_trigg (struct rrc_meas_trigg * ctxt) {
+int rrc_meas_add_trigg (struct rrc_meas_trigg *ctxt) {
 
 	if (ctxt == NULL)
 		return -1;
@@ -256,7 +256,7 @@ int rrc_meas_add_trigg (struct rrc_meas_trigg * ctxt) {
 	return 0;
 }
 
-int emoai_trig_rrc_measurements (struct rrc_meas_params * p) {
+int emoai_trig_rrc_measurements (struct rrc_meas_params *p) {
 
 	int i, m, k;
 
@@ -630,7 +630,7 @@ int emoai_comp_req_freq (uint32_t earfcnR, uint32_t earfcnC) {
 	return 0;
 }
 
-int emoai_comp_EUTRA_measObj (MeasObjEUTRA * req_mo, MeasObjEUTRA * ctxt_mo) {
+int emoai_comp_EUTRA_measObj (MeasObjEUTRA *req_mo, MeasObjEUTRA *ctxt_mo) {
 
 	/* Return value meaning:
 	 * 0 -> measOBjs are not equal
@@ -673,7 +673,7 @@ int emoai_comp_EUTRA_measObj (MeasObjEUTRA * req_mo, MeasObjEUTRA * ctxt_mo) {
 	return ret;
 }
 
-int rrc_meas_val_trigg_measObj (ueid_t ue_id, MeasObject * m_obj) {
+int rrc_meas_val_trigg_measObj (ueid_t ue_id, MeasObject *m_obj) {
 
 	/* return value meaning:
 	 * 0 -> not equal
@@ -795,7 +795,7 @@ int rrc_meas_val_trigg_measObj (ueid_t ue_id, MeasObject * m_obj) {
 	return 0;
 }
 
-int emoai_comp_EUTRA_repConf (RepConfEUTRA * req_rc, RepConfEUTRA * ctxt_rc) {
+int emoai_comp_EUTRA_repConf (RepConfEUTRA *req_rc, RepConfEUTRA *ctxt_rc) {
 
 	/* Return value meaning:
 	 * 0 -> reportConfig objects are not equal
@@ -979,7 +979,7 @@ int emoai_comp_EUTRA_repConf (RepConfEUTRA * req_rc, RepConfEUTRA * ctxt_rc) {
 int rrc_meas_val_trigg_repConf (
 	ueid_t ue_id,
 	uint32_t mo_freq,
-	ReportConfig * r_conf) {
+	ReportConfig *r_conf) {
 
 	/* return value meaning:
 	 * 0 -> not equal
@@ -1108,7 +1108,7 @@ int rrc_meas_val_trigg_repConf (
 	return 0;
 }
 
-int rrc_meas_trigg_update_measObj (int mo_id, MeasObject * m_obj) {
+int rrc_meas_trigg_update_measObj (int mo_id, MeasObject *m_obj) {
 	/* Get the measurement object stored. */
 	struct rrc_meas_trigg *ctxt;
 	RB_FOREACH(ctxt, rrc_meas_trigg_tree, &rrc_meas_t_head) {
@@ -1160,8 +1160,8 @@ int rrc_meas_trigg_update_measObj (int mo_id, MeasObject * m_obj) {
 }
 
 int emoai_RRC_measurements (
-	EmageMsg * request,
-	EmageMsg ** reply,
+	EmageMsg *request,
+	EmageMsg **reply,
 	unsigned int trigger_id) {
 
 	uint32_t ue_id;
@@ -1218,7 +1218,7 @@ int emoai_RRC_measurements (
 	}
 
 	/* Get the UE context which holds all the measurement configuration info. */
-	struct rrc_eNB_ue_context_s* ue = emoai_get_ue_context(ue_id);
+	struct rrc_eNB_ue_context_s *ue = emoai_get_ue_context(ue_id);
 	/* Assign the measurement identifiers. */
 	if (ue->ue_context.MeasId != NULL) {
 		for (int i = 0; i < MAX_MEAS_ID; i++) {
@@ -1386,7 +1386,7 @@ req_error:
 	return 0;
 }
 
-int emoai_store_rrc_eNB_mui (mui_t * mui) {
+int emoai_store_rrc_eNB_mui (mui_t *mui) {
 	emoai_rrc_eNB_mui = mui;
 	return 0;
 }
@@ -1395,8 +1395,8 @@ int emoai_RRC_meas_reconf (
 	uint32_t rnti,
 	int measId_add,
 	int measId_rem,
-	MeasObject * m_obj,
-	ReportConfig * r_conf) {
+	MeasObject *m_obj,
+	ReportConfig *r_conf) {
 
 	int m;
 	uint8_t buffer[RRC_BUF_SIZE];
@@ -1830,17 +1830,17 @@ int emoai_RRC_meas_reconf (
 					buffer,
 					rrc_eNB_get_next_transaction_identifier(
 											emage_eNB_RRC_UE_ctxt.module_id),
-					(SRB_ToAddModList_t*)NULL,
-					(DRB_ToAddModList_t*)NULL,
-					(DRB_ToReleaseList_t*)NULL,
-					(struct SPS_Config*)NULL,
+					(SRB_ToAddModList_t *)NULL,
+					(DRB_ToAddModList_t *)NULL,
+					(DRB_ToReleaseList_t *)NULL,
+					(struct SPS_Config *)NULL,
 					NULL,
 #ifdef EXMIMO_IOT
 					NULL, NULL, NULL,NULL,
 #else
 					mo_add_l,
 					mo_rem_l,
-					(ReportConfigToAddModList_t*)rc_add_l,
+					(ReportConfigToAddModList_t *)rc_add_l,
 					rc_rem_l,
 					quantityConfig,
 					mi_add_l,
@@ -1854,7 +1854,7 @@ int emoai_RRC_meas_reconf (
 					NULL,
 					NULL
 #ifdef Rel10
-					,(SCellToAddMod_r10_t*)NULL
+					,(SCellToAddMod_r10_t *)NULL
 #endif
 					);
 
@@ -1888,9 +1888,9 @@ error:
 
 
 
-int rrc_meas_req (uint32_t * rnti) {
+int rrc_meas_req (uint32_t *rnti) {
 	/* Initialize the request message. */
-	EmageMsg * request = (EmageMsg *) malloc(sizeof(EmageMsg));
+	EmageMsg *request = (EmageMsg *) malloc(sizeof(EmageMsg));
 	emage_msg__init(request);
 
 	Header *header;
@@ -2072,7 +2072,7 @@ int rrc_meas_req (uint32_t * rnti) {
 	te->mrrc_meas = mrrc_meas;
 	request->te = te;
 
-	EmageMsg * reply = NULL;
+	EmageMsg *reply = NULL;
 
 	if (emoai_RRC_measurements (request, &reply, 0) < 0) {
 		EMLOG("Error in creating supreeth RRC measurements! ");

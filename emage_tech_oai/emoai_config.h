@@ -54,8 +54,8 @@ int emoai_trig_UEs_ID_report (void);
  * Returns 0 on success, or a negative error code on failure.
  */
 int emoai_UEs_ID_report (
-	EmageMsg * request,
-	EmageMsg ** reply,
+	EmageMsg *request,
+	EmageMsg **reply,
 	unsigned int trigger_id);
 
 /* Trigger to send UE's RRC measurement configuration to controller.
@@ -64,21 +64,21 @@ int emoai_UEs_ID_report (
  *
  * Returns 0 on success, or a negative error code on failure.
  */
-int emoai_trig_RRC_meas_conf_report (rnti_t * rnti);
+int emoai_trig_RRC_meas_conf_report (rnti_t *rnti);
 
 /* Helps in forming EUTRA measurement object for RRC measurement configuration
  * reply.
  *
  * Returns 0 on success, or a negative error code on failure.
  */
-int emoai_form_EUTRA_meas_obj (MeasObjectEUTRA_t m_obj, MeasObjEUTRA ** m);
+int emoai_form_EUTRA_meas_obj (MeasObjectEUTRA_t m_obj, MeasObjEUTRA **m);
 
 /* Helps in forming EUTRA report configuration object for RRC measurement
  * configuration reply.
  *
  * Returns 0 on success, or a negative error code on failure.
  */
-int emoai_form_EUTRA_rep_conf (ReportConfigEUTRA_t r_c, RepConfEUTRA ** r);
+int emoai_form_EUTRA_rep_conf (ReportConfigEUTRA_t r_c, RepConfEUTRA **r);
 
 /* Parses the UE's RRC measurement configuration request and prepares
  * reply with UEs RRC measurement configuration.
@@ -86,8 +86,8 @@ int emoai_form_EUTRA_rep_conf (ReportConfigEUTRA_t r_c, RepConfEUTRA ** r);
  * Returns 0 on success, or a negative error code on failure.
  */
 int emoai_RRC_meas_conf_report (
-	EmageMsg * request,
-	EmageMsg ** reply,
+	EmageMsg *request,
+	EmageMsg **reply,
 	unsigned int trigger_id);
 
 /* Request parameters related to RRC measurements configuration trigger.
@@ -104,8 +104,8 @@ struct rrc_m_conf_trigg {
 /* Compares two triggers based on UE rnti.
  */
 int rrc_m_conf_comp_trigg (
-	struct rrc_m_conf_trigg* t1,
-	struct rrc_m_conf_trigg* t2);
+	struct rrc_m_conf_trigg *t1,
+	struct rrc_m_conf_trigg *t2);
 
 /* Fetches RRC measurement configuration trigger context based on UE rnti.
  */
@@ -113,11 +113,11 @@ struct rrc_m_conf_trigg* rrc_m_conf_get_trigg (uint32_t rnti);
 
 /* Removes RRC measurement configuration trigger context from tree.
  */
-int rrc_m_conf_rem_trigg (struct rrc_m_conf_trigg* ctxt);
+int rrc_m_conf_rem_trigg (struct rrc_m_conf_trigg *ctxt);
 
 /* Insert RRC measurement configuration trigger context into tree.
  */
-int rrc_m_conf_add_trigg (struct rrc_m_conf_trigg* ctxt);
+int rrc_m_conf_add_trigg (struct rrc_m_conf_trigg *ctxt);
 
 /* RB Tree holding all request parameters related to RRC measurements
  * configuration trigger.

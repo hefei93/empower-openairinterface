@@ -120,8 +120,8 @@ int emoai_trig_UEs_ID_report (void) {
 }
 
 int emoai_UEs_ID_report (
-	EmageMsg * request,
-	EmageMsg ** reply,
+	EmageMsg *request,
+	EmageMsg **reply,
 	unsigned int trigger_id) {
 
 	int i;
@@ -241,7 +241,7 @@ int emoai_UEs_ID_report (
 	return 0;
 }
 
-int emoai_trig_RRC_meas_conf_report (rnti_t * rnti) {
+int emoai_trig_RRC_meas_conf_report (rnti_t *rnti) {
 
 /****** LOCK ******************************************************************/
 	pthread_spin_lock(&rrc_m_conf_t_lock);
@@ -272,7 +272,7 @@ int emoai_trig_RRC_meas_conf_report (rnti_t * rnti) {
 	EmageMsg *reply;
 
 	/* Initialize the request message. */
-	EmageMsg * request = (EmageMsg *) malloc(sizeof(EmageMsg));
+	EmageMsg *request = (EmageMsg *) malloc(sizeof(EmageMsg));
 	emage_msg__init(request);
 
 	Header *header;
@@ -328,7 +328,7 @@ int emoai_trig_RRC_meas_conf_report (rnti_t * rnti) {
 		return -1;
 }
 
-int emoai_form_EUTRA_meas_obj (MeasObjectEUTRA_t m_obj, MeasObjEUTRA ** m) {
+int emoai_form_EUTRA_meas_obj (MeasObjectEUTRA_t m_obj, MeasObjEUTRA **m) {
 	int i;
 
 	*m = malloc(sizeof(MeasObjEUTRA));
@@ -385,7 +385,7 @@ int emoai_form_EUTRA_meas_obj (MeasObjectEUTRA_t m_obj, MeasObjEUTRA ** m) {
 	return 0;
 }
 
-int emoai_form_EUTRA_rep_conf (ReportConfigEUTRA_t r_c, RepConfEUTRA ** r) {
+int emoai_form_EUTRA_rep_conf (ReportConfigEUTRA_t r_c, RepConfEUTRA **r) {
 
 	*r = malloc(sizeof(RepConfEUTRA));
 	rep_conf__eutra__init(*r);
@@ -586,8 +586,8 @@ int emoai_form_EUTRA_rep_conf (ReportConfigEUTRA_t r_c, RepConfEUTRA ** r) {
 }
 
 int emoai_RRC_meas_conf_report (
-	EmageMsg * request,
-	EmageMsg ** reply,
+	EmageMsg *request,
+	EmageMsg **reply,
 	unsigned int trigger_id) {
 
 	int i;
@@ -668,7 +668,7 @@ int emoai_RRC_meas_conf_report (
 	ue_capabilities__init(capabilities);
 	/* Set the LTE bands supported by UE. */
 	uint32_t num_bands = emoai_get_num_bands(ue_id);
-	uint32_t* bands = emoai_get_bands(ue_id);
+	uint32_t *bands = emoai_get_bands(ue_id);
 	if (bands != NULL) {
 		capabilities->n_band = num_bands;
 		capabilities->band = bands;
@@ -713,7 +713,7 @@ int emoai_RRC_meas_conf_report (
 	repl->capabilities = capabilities;
 
 	/* Get the UE context which holds all the measurement configuration info. */
-	struct rrc_eNB_ue_context_s* ue = emoai_get_ue_context(ue_id);
+	struct rrc_eNB_ue_context_s *ue = emoai_get_ue_context(ue_id);
 
 	/* Fill the measurement object configuration. */
 	size_t n_m_obj = 0;
@@ -904,8 +904,8 @@ req_error:
 }
 
 int rrc_m_conf_comp_trigg (
-	struct rrc_m_conf_trigg* t1,
-	struct rrc_m_conf_trigg* t2) {
+	struct rrc_m_conf_trigg *t1,
+	struct rrc_m_conf_trigg *t2) {
 
 	if (t1->t_id > t2->t_id) {
 		return 1;
@@ -924,7 +924,7 @@ struct rrc_m_conf_trigg* rrc_m_conf_get_trigg (uint32_t rnti) {
 	return RB_FIND(rrc_m_conf_trigg_tree, &rrc_m_conf_t_head, &ctxt);
 }
 
-int rrc_m_conf_rem_trigg (struct rrc_m_conf_trigg* ctxt) {
+int rrc_m_conf_rem_trigg (struct rrc_m_conf_trigg *ctxt) {
 
 	if (ctxt == NULL)
 		return -1;
@@ -938,7 +938,7 @@ int rrc_m_conf_rem_trigg (struct rrc_m_conf_trigg* ctxt) {
 	return 0;
 }
 
-int rrc_m_conf_add_trigg (struct rrc_m_conf_trigg* ctxt) {
+int rrc_m_conf_add_trigg (struct rrc_m_conf_trigg *ctxt) {
 
 	if (ctxt == NULL)
 		return -1;

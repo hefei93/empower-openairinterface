@@ -48,7 +48,7 @@ typedef uint32_t tid_t;
  *
  * Returns 0 on success, or a negative error code on failure.
  */
-int emoai_create_new_thread (void * (*func)(void *), void * arg);
+int emoai_create_new_thread (void *(*func)(void *), void *arg);
 
 /* Create the header for the main message.
  *
@@ -226,6 +226,6 @@ int emoai_is_interF_neighCellSIacq_supp (ueid_t ue_id);
 /*
  * Procedure used for clean up when an UE becomes inactive.
  */
-int emoai_handle_ue_down (uint32_t * rnti);
+int emoai_handle_ue_down (uint32_t *rnti);
 
 #endif
