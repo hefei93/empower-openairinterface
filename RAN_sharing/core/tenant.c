@@ -17,16 +17,7 @@
  * Tenant information.
  */
 
-/* RB Tree holding all tenants information.
- */
-RB_HEAD(tenants_info_tree, tenant_info) tenant_info_head =
-											RB_INITIALIZER(&tenant_info_head);
-
-RB_PROTOTYPE(
-	tenants_info_tree,
-	tenant_info,
-	tenant_i,
-	tenants_info_comp);
+#include "tenant.h"
 
 /* Generate the tree. */
 RB_GENERATE(
@@ -35,7 +26,7 @@ RB_GENERATE(
 	tenant_i,
 	tenants_info_comp);
 
-int tenants_info_comp (struct tenant_info * t1, struct tenant_info * t2) {
+int tenants_info_comp (struct tenant_info *t1, struct tenant_info *t2) {
 
 	if (t1->plmn_id > t2->plmn_id) {
 		return 1;
@@ -51,7 +42,10 @@ struct tenant_info* tenant_info_get (uint32_t plmn_id) {
 	struct tenant_info *t = NULL;
 
 	/* Compare with each of the tenants stored. */
-	RB_FOREACH(t, tenants_info_tree, &tenant_info_head) {
+	RB_FOREACH(
+				t,
+				tenants_info_tree,
+				&ran_sh_sc_i.tenant_info_head) {
 		if (t->plmn_id == plmn_id) {
 			return t;
 		}
@@ -59,12 +53,12 @@ struct tenant_info* tenant_info_get (uint32_t plmn_id) {
 	return NULL;
 }
 
-int tenant_info_rem (struct tenant_info * t) {
+int tenant_info_rem (struct tenant_info *t) {
 
 	if (t == NULL)
 		return -1;
 
-	RB_REMOVE(tenants_info_tree, &tenant_info_head, t);
+	RB_REMOVE(tenants_info_tree, &ran_sh_sc_i.tenant_info_head, t);
 	/* Free the tenant stored. */
 	if (t) {
 		ue_scheduler__free_unpacked(t->dl_ue_sched_ctrl_info, 0);
@@ -75,7 +69,7 @@ int tenant_info_rem (struct tenant_info * t) {
 	return 0;
 }
 
-int tenant_info_add (struct tenant_info * t) {
+int tenant_info_add (struct tenant_info *t) {
 
 	if (t == NULL)
 		return -1;
@@ -85,7 +79,10 @@ int tenant_info_add (struct tenant_info * t) {
 	}
 
 	/* Insert the tenant into the RB tree. */
-	RB_INSERT(tenants_info_tree, &tenant_info_head, t);
+	RB_INSERT(
+				tenants_info_tree,
+				&ran_sh_sc_i.tenant_info_head,
+				t);
 
 	return 0;
 }
@@ -95,7 +92,10 @@ int tenant_add_ue (uint32_t plmn_id, rnti_t rnti) {
 	struct tenant_info *t = NULL;
 
 	/* Compare with each of the tenants stored. */
-	RB_FOREACH(t, tenants_info_tree, &tenant_info_head) {
+	RB_FOREACH(
+				t,
+				tenants_info_tree,
+				&ran_sh_sc_i.tenant_info_head) {
 		if (t->plmn_id == plmn_id) {
 
 			for (int i = 0; i < NUMBER_OF_UE_MAX; i++) {
@@ -114,7 +114,10 @@ int tenant_rem_ue (uint32_t plmn_id, rnti_t rnti) {
 	struct tenant_info *t = NULL;
 
 	/* Compare with each of the tenants stored. */
-	RB_FOREACH(t, tenants_info_tree, &tenant_info_head) {
+	RB_FOREACH(
+				t,
+				tenants_info_tree,
+				&ran_sh_sc_i.tenant_info_head) {
 		if (t->plmn_id == plmn_id) {
 
 			for (int i = 0; i < NUMBER_OF_UE_MAX; i++) {

@@ -20,9 +20,16 @@
 #ifndef __TENANTS_H
 #define __TENANTS_H
 
+#include "collection/tree.h"
+
+#include <emage/emage.h>
+#include <emage/pb/ran_sharing.pb-c.h>
+
+#include "ran_sharing_sched.h"
+
 /* Holds information related to a tenant.
  */
-struct tenant_info {
+typedef struct tenant_info {
 	/* Tree related data */
 	RB_ENTRY(tenant_info) tenant_i;
 	/* PLMN ID of the tenant. */
@@ -30,53 +37,67 @@ struct tenant_info {
 	/* List of UEs belonging to a tenant. */
 	rnti_t ues_rnti[NUMBER_OF_UE_MAX];
 
+	/************************* Downlink ***************************************/
+
 	/* UE downlink scheduler selected by the tenant. */
 	void (*ue_downlink_sched) (
 		/* PLMN ID of the tenant. */
-		uint32_t plmn_id;
+		uint32_t plmn_id,
 		/* Module identifier. */
 		module_id_t m_id,
 		/* Current frame number. */
 		frame_t f,
 		/* Current subframe number. */
 		sub_frame_t sf,
+		/* Number of Resource Block Groups (RBG) in each CCs. */
+		int N_RBG[MAX_NUM_CCs],
 		/* eNB MAC instance. */
-		eNB_MAC_INST * eNB_mac_inst,
+		eNB_MAC_INST *eNB_mac_inst,
 		/* eNB MAC interface. */
-		MAC_xface * mac_xface,
-		/* Number of RBs for UEs assigned by the scheduler. */
-		uint16_t nb_rbs_req[MAX_NUM_CCs][NUMBER_OF_UE_MAX],
-		/* RB allocation in a particular subframe. */
-		unsigned char rballoc_sub[MAX_NUM_CCs][N_RBG_MAX],
+		MAC_xface *mac_xface,
+		/* LTE DL frame parameters. */
+		LTE_DL_FRAME_PARMS *frame_parms[MAX_NUM_CCs],
+		/* RB allocation for tenants in a subframe. */
+		int rballoc_t[N_RBG_MAX][MAX_NUM_CCs],
+		/* RB allocation for UEs of all tenants in a particular frame. */
+		rnti_t rballoc_ue[NUM_SF_IN_FRAME][N_RBG_MAX][MAX_NUM_CCs],
 		/* Minimum number of resource blocks that can be allocated to a UE. */
-		int min_rb_unit[MAX_NUM_CCs]);
+		uint16_t min_rb_unit[MAX_NUM_CCs],
+		/* UEs RNTI values belonging to a tenant. */
+		rnti_t tenant_ues[NUMBER_OF_UE_MAX]);
 
 	/* Downlink UE scheduler information sent from controller. */
-	UeScheduler * dl_ue_sched_ctrl_info;
+	UeScheduler *dl_ue_sched_ctrl_info;
 	/* Number of RBs unallocated (remaining) by the tenant scheduler for a
 	 * tenant in Downlink frame.
 	 */
-	uint32_t remaining_rbs_dl;
+	uint32_t remaining_rbs_dl[MAX_NUM_CCs];
 	/* Number of RBs allocated by the tenant scheduler for a tenant in
 	 * a particular Downlink subframe.
 	 */
-	uint32_t alloc_rbs_dl_sf;
+	uint32_t alloc_rbs_dl_sf[MAX_NUM_CCs];
+
+	/************************* Downlink ***************************************/
+
+	/*************************** Uplink ***************************************/
 
 	/* Uplink UE scheduler information sent from controller. */
-	UeScheduler * ul_ue_sched_ctrl_info;
+	UeScheduler *ul_ue_sched_ctrl_info;
 	/* Number of RBs unallocated (remaining) by the tenant scheduler for a
 	 * tenant in Uplink frame.
 	 */
-	uint32_t remaining_rbs_ul;
+	uint32_t remaining_rbs_ul[MAX_NUM_CCs];
 	/* Number of RBs allocated by the tenant scheduler for a tenant in
 	 * a particular Uplink subframe.
 	 */
-	uint32_t alloc_rbs_ul_sf;
-};
+	uint32_t alloc_rbs_ul_sf[MAX_NUM_CCs];
+
+	/*************************** Uplink ***************************************/
+} tenant_info;
 
 /* Compares two tenants based on PLMN ID.
  */
-int tenants_info_comp (struct tenant_info * t1, struct tenant_info * t2);
+int tenants_info_comp (struct tenant_info *t1, struct tenant_info *t2);
 
 /* Fetches tenant information based on PLMN ID.
  */
@@ -84,14 +105,20 @@ struct tenant_info* tenant_info_get (uint32_t plmn_id);
 
 /* Removes tenant information from tree.
  */
-int tenant_info_rem (struct tenant_info * tenant_i);
+int tenant_info_rem (struct tenant_info *tenant_i);
 
 /* Insert tenant information into tree.
  */
-int tenant_info_add (struct tenant_info * tenant_i);
+int tenant_info_add (struct tenant_info *tenant_i);
 
 /* RB Tree holding all tenants information.
  */
 struct tenants_info_tree;
+
+RB_PROTOTYPE(
+	tenants_info_tree,
+	tenant_info,
+	tenant_i,
+	tenants_info_comp);
 
 #endif
