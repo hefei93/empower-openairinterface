@@ -73,7 +73,7 @@ void schedule_RA(module_id_t module_idP,frame_t frameP, sub_frame_t subframeP,un
   unsigned char i,harq_pid,round;
   int16_t rrc_sdu_length;
   unsigned char lcid,offset;
-  module_id_t UE_id= UE_INDEX_INVALID;
+  int UE_id = -1;
   unsigned short TBsize = -1;
   unsigned short msg4_padding,msg4_post_padding,msg4_header;
   uint8_t *vrb_map;
@@ -266,6 +266,7 @@ void schedule_RA(module_id_t module_idP,frame_t frameP, sub_frame_t subframeP,un
 
           // check for Msg4 Message
           UE_id = find_UE_id(module_idP,RA_template->rnti);
+          if (UE_id == -1) { printf("%s:%d:%s: FATAL ERROR\n", __FILE__, __LINE__, __FUNCTION__); abort(); }
 
           if (Is_rrc_registered == 1) {
 
@@ -306,7 +307,7 @@ void schedule_RA(module_id_t module_idP,frame_t frameP, sub_frame_t subframeP,un
 	    // randomize frequency allocation for RA
 	    while (1) {
 	      first_rb = (unsigned char)(taus()%(PHY_vars_eNB_g[module_idP][CC_id]->frame_parms.N_RB_DL-4));
-	      
+
 	      if ((vrb_map[first_rb] != 1) && (vrb_map[first_rb+3] != 1))
 		break;
 	    }
@@ -641,14 +642,14 @@ void schedule_RA(module_id_t module_idP,frame_t frameP, sub_frame_t subframeP,un
 	      memcpy((void*)&eNB->UE_list.DLSCH_pdu[CC_id][0][(unsigned char)UE_id].payload[0][(unsigned char)offset],
 		     &eNB->common_channels[CC_id].CCCH_pdu.payload[0],
 		     rrc_sdu_length);
-	      
+
               T(T_ENB_MAC_UE_DL_PDU_WITH_DATA, T_INT(module_idP), T_INT(CC_id), T_INT(RA_template->rnti), T_INT(frameP), T_INT(subframeP),
                 T_INT(0 /*harq_pid always 0?*/), T_BUFFER(&eNB->UE_list.DLSCH_pdu[CC_id][0][UE_id].payload[0], TBsize));
 
 	      if (opt_enabled==1) {
 		trace_pdu(1, (uint8_t *)eNB->UE_list.DLSCH_pdu[CC_id][0][(unsigned char)UE_id].payload[0],
 			  rrc_sdu_length, UE_id, 3, UE_RNTI(module_idP, UE_id),
-			  eNB->subframe,0,0);
+			  eNB->frame, eNB->subframe,0,0);
 		LOG_D(OPT,"[eNB %d][DLSCH] CC_id %d Frame %d trace pdu for rnti %x with size %d\n",
 		      module_idP, CC_id, frameP, UE_RNTI(module_idP,UE_id), rrc_sdu_length);
 	      }
@@ -664,7 +665,7 @@ void schedule_RA(module_id_t module_idP,frame_t frameP, sub_frame_t subframeP,un
 	LOG_I(MAC,"[eNB %d][RAPROC] CC_id %d Frame %d, subframeP %d: Checking if Msg4 was acknowledged: \n",
 	      module_idP,CC_id,frameP,subframeP);
 	// Get candidate harq_pid from PHY
-	mac_xface->get_ue_active_harq_pid(module_idP,CC_id,RA_template->rnti,frameP,subframeP,&harq_pid,&round,0);
+	mac_xface->get_ue_active_harq_pid(module_idP,CC_id,RA_template->rnti,frameP,subframeP,&harq_pid,&round,openair_harq_RA);
 
 	if (round>0) {
 	  //RA_template->wait_ack_Msg4++;
@@ -679,7 +680,7 @@ void schedule_RA(module_id_t module_idP,frame_t frameP, sub_frame_t subframeP,un
 	  // randomize frequency allocation for RA
 	  while (1) {
 	    first_rb = (unsigned char)(taus()%(PHY_vars_eNB_g[module_idP][CC_id]->frame_parms.N_RB_DL-4));
-	    
+
 	    if ((vrb_map[first_rb] != 1) && (vrb_map[first_rb+3] != 1))
 	      break;
 	  }
@@ -689,7 +690,7 @@ void schedule_RA(module_id_t module_idP,frame_t frameP, sub_frame_t subframeP,un
 	  vrb_map[first_rb+1] = 1;
 	  vrb_map[first_rb+2] = 1;
 	  vrb_map[first_rb+3] = 1;
-	  
+
 	  if (PHY_vars_eNB_g[module_idP][CC_id]->frame_parms.frame_type == TDD) {
 	    ((DCI1A_5MHz_TDD_1_6_t*)&RA_template->RA_alloc_pdu2[0])->rballoc = mac_xface->computeRIV(PHY_vars_eNB_g[module_idP][CC_id]->frame_parms.N_RB_UL,first_rb,4);
 	    rballoc[CC_id] |= mac_xface->get_rballoc(((DCI1A_5MHz_TDD_1_6_t*)&RA_template->RA_alloc_pdu2[0])->vrb_type,
@@ -709,7 +710,10 @@ void schedule_RA(module_id_t module_idP,frame_t frameP, sub_frame_t subframeP,un
 			    RA_template->RA_dci_size_bits2,
 			    RA_template->RA_dci_fmt2,
 			    0);
+printf("MAC: msg4 retransmission for rnti %x (round %d) fsf %d/%d\n", RA_template->rnti, round, frameP, subframeP);
 	  }
+else
+printf("MAC: msg4 retransmission for rnti %x (round %d) fsf %d/%d CCE allocation failed!\n", RA_template->rnti, round, frameP, subframeP);
 	  LOG_W(MAC,"[eNB %d][RAPROC] CC_id %d Frame %d, subframeP %d: Msg4 not acknowledged, adding ue specific dci (rnti %x) for RA (Msg4 Retransmission)\n",
 		module_idP,CC_id,frameP,subframeP,RA_template->rnti);
 	} else {
@@ -718,6 +722,7 @@ void schedule_RA(module_id_t module_idP,frame_t frameP, sub_frame_t subframeP,un
 		  remove UE instance across all the layers: mac_xface->cancel_RA();
 		  }
 	  */
+printf("MAC: msg4 acknowledged for rnti %x fsf %d/%d, let's configure it\n", RA_template->rnti, frameP, subframeP);
 	  LOG_I(MAC,"[eNB %d][RAPROC] CC_id %d Frame %d, subframeP %d : Msg4 acknowledged\n",module_idP,CC_id,frameP,subframeP);
 	  RA_template->wait_ack_Msg4=0;
 	  RA_template->RA_active=FALSE;
@@ -746,15 +751,27 @@ void initiate_ra_proc(module_id_t module_idP, int CC_id,frame_t frameP, uint16_t
   VCD_SIGNAL_DUMPER_DUMP_FUNCTION_BY_NAME(VCD_SIGNAL_DUMPER_FUNCTIONS_INITIATE_RA_PROC,0);
 
   for (i=0; i<NB_RA_PROC_MAX; i++) {
-    if (RA_template[i].RA_active==FALSE) {
+    if (RA_template[i].RA_active==FALSE &&
+        RA_template[i].wait_ack_Msg4 == 0) {
+      int loop = 0;
       RA_template[i].RA_active=TRUE;
       RA_template[i].generate_rar=1;
       RA_template[i].generate_Msg4=0;
       RA_template[i].wait_ack_Msg4=0;
       // N_TA value is stored.
       RA_template[i].timing_offset=timing_offset;
-      // Put in random rnti (to be replaced with proper procedure!!)
-      RA_template[i].rnti = taus();
+      /* TODO: find better procedure to allocate RNTI */
+      do {
+        RA_template[i].rnti = taus();
+        loop++;
+      } while (loop != 100 &&
+               /* TODO: this is not correct, the rnti may be in use without
+                * being in the MAC yet. To be refined.
+                */
+               !(find_UE_id(module_idP, RA_template[i].rnti) == -1 &&
+                 /* 1024 and 60000 arbirarily chosen, not coming from standard */
+                 RA_template[i].rnti >= 1024 && RA_template[i].rnti < 60000));
+      if (loop == 100) { printf("%s:%d:%s: FATAL ERROR! contact the authors\n", __FILE__, __LINE__, __FUNCTION__); abort(); }
       RA_template[i].RA_rnti = 1+subframeP+(10*f_id);
       RA_template[i].preamble_index = preamble_index;
       LOG_D(MAC,"[eNB %d][RAPROC] CC_id %d Frame %d Activating RAR generation for process %d, rnti %x, RA_active %d\n",
@@ -764,6 +781,8 @@ void initiate_ra_proc(module_id_t module_idP, int CC_id,frame_t frameP, uint16_t
       return;
     }
   }
+
+  LOG_E(MAC,"[eNB %d][RAPROC] FAILURE: CC_id %d Frame %d Initiating RA procedure for preamble index %d\n",module_idP,CC_id,frameP,preamble_index);
 }
 
 void cancel_ra_proc(module_id_t module_idP, int CC_id, frame_t frameP, rnti_t rnti)
@@ -786,4 +805,3 @@ void cancel_ra_proc(module_id_t module_idP, int CC_id, frame_t frameP, rnti_t rn
     }
   }
 }
-

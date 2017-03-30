@@ -49,6 +49,10 @@
 #   include "gtpv1u_eNB_task.h"
 # endif
 
+#if defined(FLEXRAN_AGENT_SB_IF)
+#   include "flexran_agent.h"
+#endif
+
 extern unsigned char NB_eNB_INST;
 #endif
 
@@ -147,7 +151,7 @@ static void configure_rrc(uint32_t enb_id, const Enb_properties_array_t *enb_pro
     RRC_CONFIGURATION_REQ (msg_p).pucch_delta_shift[CC_id]                        = enb_properties->properties[enb_id]->pucch_delta_shift[CC_id];
     RRC_CONFIGURATION_REQ (msg_p).pucch_nRB_CQI[CC_id]                            = enb_properties->properties[enb_id]->pucch_nRB_CQI[CC_id];
     RRC_CONFIGURATION_REQ (msg_p).pucch_nCS_AN[CC_id]                             = enb_properties->properties[enb_id]->pucch_nCS_AN[CC_id];
-#ifndef Rel10
+#if !defined(Rel10) && !defined(Rel14)
     RRC_CONFIGURATION_REQ (msg_p).pucch_n1_AN[CC_id]                              = enb_properties->properties[enb_id]->pucch_n1_AN[CC_id];
 #endif
 
@@ -287,7 +291,7 @@ void *eNB_app_task(void *args_p)
 
   itti_mark_task_ready (TASK_ENB_APP);
 
-# if defined(ENABLE_USE_MME)
+  # if defined(ENABLE_ITTI)
 #   if defined(OAI_EMU)
   enb_nb =        oai_emulation.info.nb_enb_local;
   enb_id_start =  oai_emulation.info.first_enb_local;
@@ -297,7 +301,7 @@ void *eNB_app_task(void *args_p)
                "Last eNB index is greater or equal to maximum eNB index (%d/%d)!",
                enb_id_end, NUMBER_OF_eNB_MAX);
 #   endif
-# endif
+  # endif
 
   enb_properties_p = enb_config_get();
 
@@ -309,6 +313,14 @@ void *eNB_app_task(void *args_p)
     configure_phy(enb_id, enb_properties_p);
     configure_rrc(enb_id, enb_properties_p);
   }
+
+#if defined (FLEXRAN_AGENT_SB_IF)
+  
+  for (enb_id = enb_id_start; (enb_id < enb_id_end) ; enb_id++) {
+    printf("\n start enb agent %d\n", enb_id);
+    flexran_agent_start(enb_id, enb_properties_p);
+  }
+#endif 
 
 # if defined(ENABLE_USE_MME)
   /* Try to register each eNB */
@@ -398,7 +410,7 @@ void *eNB_app_task(void *args_p)
       break;
 
     case TIMER_HAS_EXPIRED:
-      LOG_I(ENB_APP, " Received %s: timer_id %d\n", msg_name, TIMER_HAS_EXPIRED(msg_p).timer_id);
+      LOG_I(ENB_APP, " Received %s: timer_id %ld\n", msg_name, TIMER_HAS_EXPIRED(msg_p).timer_id);
 
       if (TIMER_HAS_EXPIRED (msg_p).timer_id == enb_register_retry_timer_id) {
         /* Restart the registration process */

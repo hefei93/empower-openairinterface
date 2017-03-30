@@ -53,6 +53,7 @@ rlc_am_get_buffer_occupancy_in_bytes (
   uint32_t header_overhead;
 
   // priority of control trafic
+  rlc_pP->status_buffer_occupancy = 0;
   if (rlc_pP->status_requested) {
     if (rlc_pP->t_status_prohibit.running == 0) {
 #if TRACE_RLC_AM_BO
@@ -64,7 +65,7 @@ rlc_am_get_buffer_occupancy_in_bytes (
       }
 
 #endif
-      return ((15  +  rlc_pP->num_nack_sn*(10+1)  +  rlc_pP->num_nack_so*(15+15+1) + 7) >> 3);
+      rlc_pP->status_buffer_occupancy = ((15  +  rlc_pP->num_nack_sn*(10+1)  +  rlc_pP->num_nack_so*(15+15+1) + 7) >> 3);
     }
   }
 
@@ -113,7 +114,8 @@ config_req_rlc_am (
   const protocol_ctxt_t* const ctxt_pP,
   const srb_flag_t             srb_flagP,
   rlc_am_info_t  * const       config_am_pP,
-  const rb_id_t                rb_idP
+  const rb_id_t                rb_idP,
+  const logical_chan_id_t      chan_idP 
 )
 {
   rlc_union_t       *rlc_union_p = NULL;
@@ -135,7 +137,7 @@ config_req_rlc_am (
           config_am_pP->t_reordering,
           config_am_pP->t_status_prohibit);
     rlc_am_init(ctxt_pP, l_rlc_p);
-    rlc_am_set_debug_infos(ctxt_pP, l_rlc_p, srb_flagP, rb_idP);
+    rlc_am_set_debug_infos(ctxt_pP, l_rlc_p, srb_flagP, rb_idP, chan_idP);
     rlc_am_configure(ctxt_pP, l_rlc_p,
                      config_am_pP->max_retx_threshold,
                      config_am_pP->poll_pdu,
@@ -151,16 +153,23 @@ config_req_rlc_am (
 uint32_t pollPDU_tab[PollPDU_pInfinity+1]= {4,8,16,32,64,128,256,1024}; // What is PollPDU_pInfinity??? 1024 for now
 uint32_t maxRetxThreshold_tab[UL_AM_RLC__maxRetxThreshold_t32+1]= {1,2,3,4,6,8,16,32};
 uint32_t pollByte_tab[PollByte_spare1]= {25,50,75,100,125,250,375,500,750,1000,1250,1500,2000,3000,10000}; // What is PollByte_kBinfinity??? 10000 for now
+#if defined(Rel14)
+uint32_t PollRetransmit_tab[T_PollRetransmit_spare5]= {5,10,15,20,25,30,35,40,45,50,55,60,65,70,75,80,85,90,95,100,105,110,115,120,125,130,135,140,145,150,155,160,165,170,175,180,185,190,195,200,205,210,215,220,225,230,235,240,245,250,300,350,400,450,500,800,1000,2000,4000};
+uint32_t am_t_Reordering_tab[32]= {0,5,10,15,20,25,30,35,40,45,50,55,60,65,70,75,80,85,90,95,100,110,120,130,140,150,160,170,180,190,200,1600};
+uint32_t t_StatusProhibit_tab[T_StatusProhibit_spare2]= {0,5,10,15,20,25,30,35,40,45,50,55,60,65,70,75,80,85,90,95,100,105,110,115,120,125,130,135,140,145,150,155,160,165,170,175,180,185,190,195,200,205,210,215,220,225,230,235,240,245,250,300,350,400,450,500,800,1000,1200,1600,2000,2400};
+#else
 uint32_t PollRetransmit_tab[T_PollRetransmit_spare9]= {5,10,15,20,25,30,35,40,45,50,55,60,65,70,75,80,85,90,95,100,105,110,115,120,125,130,135,140,145,150,155,160,165,170,175,180,185,190,195,200,205,210,215,220,225,230,235,240,245,250,300,350,400,450,500};
 uint32_t am_t_Reordering_tab[T_Reordering_spare1]= {0,5,10,15,20,25,30,35,40,45,50,55,60,65,70,75,80,85,90,95,100,110,120,130,140,150,160,170,180,190,200};
 uint32_t t_StatusProhibit_tab[T_StatusProhibit_spare8]= {0,5,10,15,20,25,30,35,40,45,50,55,60,65,70,75,80,85,90,95,100,105,110,115,120,125,130,135,140,145,150,155,160,165,170,175,180,185,190,195,200,205,210,215,220,225,230,235,240,245,250,300,350,400,450,500};
+#endif
 
 //-----------------------------------------------------------------------------
 void config_req_rlc_am_asn1 (
   const protocol_ctxt_t* const         ctxt_pP,
   const srb_flag_t                     srb_flagP,
   const struct RLC_Config__am  * const config_am_pP,
-  const rb_id_t                        rb_idP)
+  const rb_id_t                        rb_idP,
+  const logical_chan_id_t              chan_idP)
 {
   rlc_union_t     *rlc_union_p   = NULL;
   rlc_am_entity_t *l_rlc_p         = NULL;
@@ -175,9 +184,15 @@ void config_req_rlc_am_asn1 (
     if ((config_am_pP->ul_AM_RLC.maxRetxThreshold <= UL_AM_RLC__maxRetxThreshold_t32) &&
         (config_am_pP->ul_AM_RLC.pollPDU<=PollPDU_pInfinity) &&
         (config_am_pP->ul_AM_RLC.pollByte<PollByte_spare1) &&
+#if defined(Rel14)
+        (config_am_pP->ul_AM_RLC.t_PollRetransmit<T_PollRetransmit_spare5) &&
+        (config_am_pP->dl_AM_RLC.t_Reordering<32) &&
+        (config_am_pP->dl_AM_RLC.t_StatusProhibit<T_StatusProhibit_spare2) ) {
+#else
         (config_am_pP->ul_AM_RLC.t_PollRetransmit<T_PollRetransmit_spare9) &&
         (config_am_pP->dl_AM_RLC.t_Reordering<T_Reordering_spare1) &&
         (config_am_pP->dl_AM_RLC.t_StatusProhibit<T_StatusProhibit_spare8) ) {
+#endif
 
       MSC_LOG_RX_MESSAGE(
         (ctxt_pP->enb_flag == ENB_FLAG_YES) ? MSC_RLC_ENB:MSC_RLC_UE,
@@ -201,7 +216,7 @@ void config_req_rlc_am_asn1 (
             t_StatusProhibit_tab[config_am_pP->dl_AM_RLC.t_StatusProhibit]);
 
       rlc_am_init(ctxt_pP, l_rlc_p);
-      rlc_am_set_debug_infos(ctxt_pP, l_rlc_p, srb_flagP, rb_idP);
+      rlc_am_set_debug_infos(ctxt_pP, l_rlc_p, srb_flagP, rb_idP, chan_idP);
       rlc_am_configure(ctxt_pP, l_rlc_p,
                        maxRetxThreshold_tab[config_am_pP->ul_AM_RLC.maxRetxThreshold],
                        pollPDU_tab[config_am_pP->ul_AM_RLC.pollPDU],
@@ -220,7 +235,7 @@ void config_req_rlc_am_asn1 (
         PROTOCOL_RLC_AM_MSC_ARGS(ctxt_pP, l_rlc_p));
 
       LOG_D(RLC,
-            PROTOCOL_RLC_AM_CTXT_FMT"ILLEGAL CONFIG_REQ (max_retx_threshold=%d poll_pdu=%d poll_byte=%d t_poll_retransmit=%d t_reord=%d t_status_prohibit=%d), RLC-AM NOT CONFIGURED\n",
+            PROTOCOL_RLC_AM_CTXT_FMT"ILLEGAL CONFIG_REQ (max_retx_threshold=%ld poll_pdu=%ld poll_byte=%ld t_poll_retransmit=%ld t_reord=%ld t_status_prohibit=%ld), RLC-AM NOT CONFIGURED\n",
             PROTOCOL_RLC_AM_CTXT_ARGS(ctxt_pP,l_rlc_p),
             config_am_pP->ul_AM_RLC.maxRetxThreshold,
             config_am_pP->ul_AM_RLC.pollPDU,
@@ -338,6 +353,7 @@ rlc_am_get_pdus (
         if (pdu) {
           list_add_tail_eurecom (pdu, &rlc_pP->pdus_to_mac_layer);
           rlc_pP->status_requested = 0;
+          rlc_pP->status_buffer_occupancy = 0;
           rlc_am_start_timer_status_prohibit(ctxt_pP, rlc_pP);
           return;
         }
@@ -519,7 +535,7 @@ rlc_am_rx (
   switch (rlc->protocol_state) {
 
   case RLC_NULL_STATE:
-    LOG_N(RLC, PROTOCOL_RLC_AM_CTXT_FMT" ERROR MAC_DATA_IND IN RLC_NULL_STATE\n", arg_pP);
+    LOG_N(RLC, PROTOCOL_RLC_AM_CTXT_FMT" ERROR MAC_DATA_IND IN RLC_NULL_STATE\n", PROTOCOL_RLC_AM_CTXT_ARGS(ctxt_pP, rlc));
     list_free (&data_indP.data);
     break;
 
@@ -528,7 +544,7 @@ rlc_am_rx (
     break;
 
   default:
-    LOG_E(RLC, PROTOCOL_RLC_AM_CTXT_FMT" TX UNKNOWN PROTOCOL STATE 0x%02X\n", rlc, rlc->protocol_state);
+    LOG_E(RLC, PROTOCOL_RLC_AM_CTXT_FMT" TX UNKNOWN PROTOCOL STATE 0x%02X\n", PROTOCOL_RLC_AM_CTXT_ARGS(ctxt_pP, rlc), rlc->protocol_state);
   }
 }
 
@@ -552,6 +568,15 @@ rlc_am_mac_status_indication (
   status_resp.head_sdu_creation_time           = 0;
   status_resp.head_sdu_is_segmented            = 0;
   status_resp.rlc_info.rlc_protocol_state = rlc->protocol_state;
+
+  /* TODO: remove this hack. Problem is: there is a race.
+   * UE comes. SRB2 is configured via message to RRC.
+   * At some point the RLC AM is created but not configured yet.
+   * At this moment (I think) MAC calls mac_rlc_status_ind
+   * which calls this function. But the init was not finished yet
+   * and we have a crash below when testing mem_block != NULL.
+   */
+  if (rlc->input_sdus == NULL) return status_resp;
 
   if (rlc->last_frame_status_indication != ctxt_pP->frame) {
     rlc_am_check_timer_poll_retransmit(ctxt_pP, rlc);
@@ -1276,7 +1301,7 @@ rlc_am_data_req (
           l_rlc_p->input_sdus[l_rlc_p->next_sdu_index].mem_block, l_rlc_p->input_sdus[l_rlc_p->next_sdu_index].flags.segmented);
     l_rlc_p->stat_tx_pdcp_sdu_discarded   += 1;
     l_rlc_p->stat_tx_pdcp_bytes_discarded += ((struct rlc_am_data_req *) (sdu_pP->data))->data_size;
-    free_mem_block (sdu_pP);
+    free_mem_block (sdu_pP, __func__);
 #if STOP_ON_IP_TRAFFIC_OVERLOAD
     AssertFatal(0, PROTOCOL_RLC_AM_CTXT_FMT" RLC_AM_DATA_REQ size %d Bytes, SDU DROPPED, INPUT BUFFER OVERFLOW NB SDU %d current_sdu_index=%d next_sdu_index=%d \n",
                 PROTOCOL_RLC_AM_CTXT_ARGS(ctxt_pP,l_rlc_p),

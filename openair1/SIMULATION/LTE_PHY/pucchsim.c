@@ -47,7 +47,7 @@ PHY_VARS_UE *UE;
 
 #define DLSCH_RB_ALLOC 0x1fbf // igore DC component,RB13
 
-
+double cpuf;
 
 int main(int argc, char **argv)
 {
@@ -100,6 +100,8 @@ int main(int argc, char **argv)
   uint16_t n2_pucch = 0;
 
   number_of_cards = 1;
+
+  cpuf = get_cpu_freq_GHz();
 
   while ((c = getopt (argc, argv, "har:pf:g:n:s:S:x:y:z:N:F:T:R:")) != -1) {
     switch (c) {
@@ -296,6 +298,7 @@ int main(int argc, char **argv)
     n_tx=2;
 
   lte_param_init(n_tx,
+                 n_tx,
 		 n_rx,
 		 transmission_mode,
 		 extended_prefix_flag,
