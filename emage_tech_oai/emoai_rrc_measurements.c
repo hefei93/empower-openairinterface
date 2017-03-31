@@ -351,7 +351,7 @@ int emoai_trig_rrc_measurements (struct rrc_meas_params * p) {
 	/* Fill the Primary Cell RSRP and RSRQ. */
 	repl->has_pcell_rsrp = 1;
 	repl->has_pcell_rsrq = 1;
-	#ifdef Rel10
+  #if defined(Rel10) || defined(Rel14)
 		repl->has_pcell_rsrp = 1;
 		repl->has_pcell_rsrq = 1;
 		repl->pcell_rsrp = RSRP_meas_mapping[meas->
@@ -1856,7 +1856,7 @@ int emoai_RRC_meas_reconf (
 					NULL,
 					NULL,
 					NULL
-#ifdef Rel10
+#if defined(Rel10) || defined(Rel14)
 					,(SCellToAddMod_r10_t*)NULL
 #endif
 					);
