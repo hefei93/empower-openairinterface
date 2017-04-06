@@ -622,7 +622,7 @@ add_boolean_option(MESSAGE_CHART_GENERATOR_PHY     False "trace some PHY exchang
 
 add_boolean_option(ENB_AGENT                   True         "enable eNB agent to inteface with a SDN contrller")
 add_boolean_option(EMAGE_AGENT                 True         "enable EMAge agent to inteface with a controller")
-add_boolean_option(RAN_SHARING_FLAG            False         "enable RAN slicing in eNB")
+add_boolean_option(RAN_SHARING_FLAG            True         "enable RAN slicing in eNB")
 ########################
 # Include order
 ##########################
@@ -1661,7 +1661,9 @@ if (${RAN_SHARING_FLAG})
   include_directories (${RAN_SHARING_UE_SCHED_DIR})
 
   add_library(RAN_SHARING
-    ${RAN_SHARING_CORE_DIR}/plugin_sched_pre_processor.c
+    ${RAN_SHARING_CORE_DIR}/tenant.c
+    ${RAN_SHARING_CORE_DIR}/ran_sharing_sched.c
+    ${RAN_SHARING_CORE_DIR}/emoai_ran_sharing_ctrl.c
     ${RAN_SHARING_UE_SCHED_DIR}/rr.c
   )
 
