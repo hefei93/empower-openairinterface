@@ -483,7 +483,7 @@ uint8_t do_SIB1(uint8_t Mod_id, int CC_id,
     /* Secondary PLMN ID*/
     // dummy_mnc2[0] = 9;
     // dummy_mnc2[1] = 3;
-    // dummy_mnc2[2] = 1;
+    // dummy_mnc2[2] = 0xf;
   } else {
     if (configuration->mnc_digit_length == 2) {
       dummy_mnc[0] = (configuration->mnc / 10) % 10;
@@ -1608,7 +1608,7 @@ do_RRCConnectionSetup(
 #endif
   physicalConfigDedicated2->cqi_ReportConfig->nomPDSCH_RS_EPRE_Offset = 0; // 0 dB
   //physicalConfigDedicated2->cqi_ReportConfig->cqi_ReportPeriodic=NULL;
-  
+
   physicalConfigDedicated2->cqi_ReportConfig->cqi_ReportPeriodic=CALLOC(1,sizeof(*physicalConfigDedicated2->cqi_ReportConfig->cqi_ReportPeriodic));
   physicalConfigDedicated2->cqi_ReportConfig->cqi_ReportPeriodic->present =  CQI_ReportPeriodic_PR_release;
     /*
