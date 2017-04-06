@@ -347,11 +347,6 @@ typedef struct {
   uint8_t (*get_SB_size)(uint8_t n_rb_dl);
   ///end ALU's algo
 
-  #ifdef RAN_SHARING_FLAG
-    /// Invoke dlsch scheduler pre-processor procedure for new subframe
-    void (*dlsch_scheduler_pre_processor)(module_id_t Mod_id, frame_t frameP, sub_frame_t subframeP, int N_RBG[MAX_NUM_CCs], int *mbsfn_flag);
-  #endif /* RAN_SHARING_FLAG */
-
 } MAC_xface;
 
 

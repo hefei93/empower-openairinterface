@@ -63,9 +63,6 @@
 
 #include "SCHED/defs.h"
 
-#ifdef RAN_SHARING_FLAG
-  #include "plugin_sched_pre_processor.h"
-#endif /* RAN_SHARING_FLAG */
 
 void dl_phy_sync_success(module_id_t   module_idP,
                          frame_t       frameP,
@@ -454,9 +451,6 @@ int l2_init(LTE_DL_FRAME_PARMS *frame_parms,int eMBMS_active, char *uecap_xer,ui
 #endif
   LOG_I(MAC,"[MAIN] init eNB MAC functions  \n");
   mac_xface->eNB_dlsch_ulsch_scheduler      = eNB_dlsch_ulsch_scheduler;
-  #ifdef RAN_SHARING_FLAG
-    mac_xface->dlsch_scheduler_pre_processor  = plugin_sched_dlsch_pre_processor;
-  #endif /* RAN_SHARING_FLAG */
   mac_xface->get_dci_sdu                    = get_dci_sdu;
   mac_xface->fill_rar                       = fill_rar;
   mac_xface->initiate_ra_proc               = initiate_ra_proc;

@@ -854,6 +854,11 @@ void dlsch_scheduler_pre_processor_reset (int module_idP,
     LOG_D(MAC,"Frame %d Subframe %d CC_id %d RBG %i : rb_alloc %d\n",frameP,subframeP,CC_id,i,rballoc_sub[CC_id][i]);
     MIMO_mode_indicator[CC_id][i] = 2;
   }
+
+  // printf("\n Subframe %d\n", subframeP);
+  // for (int i = 0; i < N_RBG; i++) {
+  //   printf("%d\t", rballoc_sub[CC_id][i]);
+  // }
 }
 
 

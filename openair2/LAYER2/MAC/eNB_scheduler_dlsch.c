@@ -62,7 +62,9 @@
 #define ENABLE_MAC_PAYLOAD_DEBUG
 //#define DEBUG_eNB_SCHEDULER 1
 
-
+#ifdef RAN_SHARING_FLAG
+  #include "ran_sharing_sched.h"
+#endif /* RAN_SHARING_FLAG */
 
 //------------------------------------------------------------------------------
 void
@@ -490,11 +492,14 @@ schedule_ue_spec(
   VCD_SIGNAL_DUMPER_DUMP_FUNCTION_BY_NAME(VCD_SIGNAL_DUMPER_FUNCTIONS_DLSCH_PREPROCESSOR,VCD_FUNCTION_IN);
   start_meas(&eNB->schedule_dlsch_preprocessor);
   #ifdef RAN_SHARING_FLAG
-    mac_xface->dlsch_scheduler_pre_processor(module_idP,
-                                          frameP,
-                                          subframeP,
-                                          N_RBG,
-                                          mbsfn_flag);
+    ran_sharing_dlsch_sched (
+                            module_idP,
+                            frameP,
+                            subframeP,
+                            N_RBG,
+                            mbsfn_flag,
+                            frame_parms,
+                            min_rb_unit);
   #else
     dlsch_scheduler_pre_processor(module_idP,
                               frameP,
