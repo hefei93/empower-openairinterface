@@ -29,6 +29,8 @@
 #define NUM_SF_IN_FRAME 10
 /* Number of RBs used for Control Channel in a frame in Downlink. */
 #define NUM_RBS_CTRL_CH_DL 19
+/* Number of RBs used for Control Channel in a frame in Uplink. */
+#define NUM_RBS_CTRL_CH_UL 10
 /* Maximum number of tenants in eNB (Restriction based on SIB1 PLMN ID List). */
 #define MAX_TENANTS 6
 
