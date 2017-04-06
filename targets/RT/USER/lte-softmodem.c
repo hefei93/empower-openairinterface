@@ -110,6 +110,10 @@ extern int netlink_init(void);
 # include <emoai.h>
 #endif /* EMAGE_AGENT */
 
+#ifdef RAN_SHARING_FLAG
+# include "ran_sharing_sched.h"
+#endif /* RAN_SHARING_FLAG */
+
 #ifdef XFORMS
 #include "PHY/TOOLS/lte_phy_scope.h"
 #include "stats.h"
@@ -1839,6 +1843,10 @@ int main( int argc, char **argv )
       PHY_vars_eNB_g[0][CC_id]->rf_map.chain=CC_id+chain_offset;
     }
   }
+
+#ifdef RAN_SHARING_FLAG
+  ran_sharing_sched_init(0);
+#endif /* RAN_SHARING_FLAG */
 
   // connect the TX/RX buffers
   if (UE_flag==1) {
