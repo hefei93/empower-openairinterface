@@ -19,6 +19,11 @@
 
 #include "emoai_config.h"
 
+#include "openair1/PHY/extern.h"
+#ifdef RAN_SHARING_FLAG
+	#include "ran_sharing_sched.h"
+#endif /* RAN_SHARING_FLAG */
+
 /* Holds the transaction id of UEs ID report trigger request.
  * If negative, trigger is not enabled, else holds transaction id of request.
  * At any point in time, only one trigger of type UEs ID report can exist.
@@ -942,6 +947,127 @@ int rrc_m_conf_add_trigg (struct rrc_m_conf_trigg *ctxt) {
 		return -1;
 
 	RB_INSERT(rrc_m_conf_trigg_tree, &rrc_m_conf_t_head, ctxt);
+
+	return 0;
+}
+
+CellInformation * emoai_prep_cell_info (module_id_t m_id, int cc_id) {
+
+	LTE_DL_FRAME_PARMS *fp =
+						mac_xface->get_lte_frame_parms(m_id, cc_id);
+
+	const Enb_properties_array_t *enb_p = enb_config_get();
+
+	/* Initialize individual cells. */
+	CellInformation *cell = malloc(sizeof(CellInformation));
+	cell_information__init(cell);
+
+	cell->phys_cell_id = fp->Nid_cell;
+	cell->carrier_freq =
+				enb_p->properties[m_id]->downlink_frequency[cc_id] / 1000000;
+
+	cell->has_num_rbs_dl = 1;
+	cell->num_rbs_dl = fp->N_RB_DL;
+	cell->has_num_rbs_ul = 1;
+	cell->num_rbs_ul = fp->N_RB_UL;
+
+	/* Currently only resource allocation type 0 is supported in DLSCH. */
+	cell->n_res_alloc_type_supp_dl = 1;
+	cell->res_alloc_type_supp_dl =
+		malloc(cell->n_res_alloc_type_supp_dl * sizeof(uint32_t));
+	cell->res_alloc_type_supp_dl[0] = 0;
+
+	cell->n_res_alloc_type_supp_ul = 0;
+	cell->res_alloc_type_supp_ul = NULL;
+
+	return cell;
+}
+
+int emoai_eNB_cells_report (EmageMsg *request, EmageMsg **reply) {
+
+	int cc_id;
+	ENBCellsReq *req;
+
+	/* If the event type is not a single event then its an error. */
+	if (request->event_types_case == EMAGE_MSG__EVENT_TYPES_SE) {
+		/* Its a single event request. */
+		req = request->se->menb_cells->req;
+	} else {
+		return -1;
+	}
+
+	/* Form the eNB cells message. */
+	ENBCells *menb_cells = (ENBCells *) malloc(sizeof(ENBCells));
+	e_nb_cells__init(menb_cells);
+	/* Reply message type. */
+	menb_cells->e_nb_cells_m_case = E_NB_CELLS__E_NB_CELLS_M_REPL;
+	/* Form the eNB cells report message. */
+	ENBCellsRepl *repl = (ENBCellsRepl *) malloc(sizeof(ENBCellsRepl));
+	e_nb_cells_repl__init(repl);
+
+	/* Cells information is requested. */
+	if (req->enb_info_types & E_NB_CELLS_INFO_TYPES__ENB_CELLS_INFO) {
+		/* Number of cells equates to Max. numer of CCs in OAI. */
+		repl->n_cells = MAX_NUM_CCs;
+
+		CellInformation **cells = NULL;
+		cells = malloc(repl->n_cells * sizeof(CellInformation *));
+		/* Looping over all Component Carriers / Cells. */
+		for (cc_id = 0; cc_id < MAX_NUM_CCs; cc_id++) {
+			cells[cc_id] = emoai_prep_cell_info(DEFAULT_ENB_ID, cc_id);
+		}
+
+		repl->cells = cells;
+	}
+
+#ifdef RAN_SHARING_FLAG
+	/* RAN sharing information is requested. */
+	if (req->enb_info_types & E_NB_CELLS_INFO_TYPES__ENB_RAN_SHARING_INFO) {
+		/* Initialize RAN sharing info message. */
+		RanSharingInfo *ran_sh_i = malloc(sizeof(RanSharingInfo));
+		/* RAN sharing Downlink scheduling information. */
+		RbsAllocEveryFrame *rbs_alloc_dl = malloc(sizeof(RbsAllocEveryFrame));
+
+
+	}
+#endif /* RAN_SHARING_FLAG */
+
+	/* Successful outcome of request. */
+	repl->status = CONF_REQ_STATUS__CREQS_SUCCESS;
+
+	Header *header;
+	/* Initialize header message. */
+	/* Assign the same transaction id as the request message. */
+	if (emoai_create_header(
+			request->head->b_id,
+			request->head->seq,
+			request->head->t_id,
+			&header) != 0) {
+		return -1;
+	}
+
+	/* Form the main Emage message here. */
+	*reply = (EmageMsg *) malloc(sizeof(EmageMsg));
+	emage_msg__init(*reply);
+	(*reply)->head = header;
+	/* Assign event type same as request message. */
+	(*reply)->event_types_case = request->event_types_case;
+
+	/* Attach the eNB cells report message to the main eNB cells message. */
+	menb_cells->repl = repl;
+
+	if (request->event_types_case == EMAGE_MSG__EVENT_TYPES_SE) {
+		/* Its a single event reply. */
+		SingleEvent *se = malloc(sizeof(SingleEvent));
+		single_event__init(se);
+
+		/* Fill the single event message. */
+		se->events_case = SINGLE_EVENT__EVENTS_M_ENB_CELLS;
+		se->menb_cells = menb_cells;
+		(*reply)->se = se;
+	} else {
+		return -1;
+	}
 
 	return 0;
 }

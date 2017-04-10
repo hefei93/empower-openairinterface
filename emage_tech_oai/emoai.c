@@ -27,6 +27,7 @@ struct em_agent_ops sim_ops = {
 	.UEs_ID_report = emoai_UEs_ID_report,
 	.RRC_meas_conf = emoai_RRC_meas_conf_report,
 	.RRC_measurements = emoai_RRC_measurements,
+	.eNB_cells_report = emoai_eNB_cells_report,
 };
 
 int emoai_init (void) {

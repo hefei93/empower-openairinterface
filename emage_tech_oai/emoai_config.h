@@ -124,4 +124,17 @@ int rrc_m_conf_add_trigg (struct rrc_m_conf_trigg *ctxt);
  */
 struct rrc_m_conf_trigg_tree;
 
+/* Prepares Cell information message for eNB Cells information
+ * reply.
+ *
+ * Returns CellInformation pointer.
+ */
+CellInformation * emoai_prep_cell_info (module_id_t m_id, int cc_id);
+
+/* Parses the eNB cells info request and prepares the requested cells report.
+ *
+ * Returns 0 on success, or a negative error code on failure.
+ */
+int emoai_eNB_cells_report (EmageMsg *request, EmageMsg **reply);
+
 #endif
