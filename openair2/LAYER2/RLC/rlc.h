@@ -55,7 +55,7 @@
 #    include "SRB-ToAddModList.h"
 #    include "DRB-ToReleaseList.h"
 
-#ifdef Rel10
+#if defined(Rel10) || defined(Rel14)
 #include "PMCH-InfoList-r9.h"
 #endif
 
@@ -224,7 +224,7 @@ typedef struct rlc_mbms_id_s {
   mbms_session_id_t       session_id;
 } rlc_mbms_id_t;
 
-#if !defined(Rel10)
+#if !defined(Rel10) && !defined(Rel14)
 #    if !defined(maxServiceCount)
 //unused arrays rlc_mbms_array_ue rlc_mbms_array_eNB
 #        define maxServiceCount 1
@@ -262,7 +262,18 @@ public_rlc(logical_chan_id_t    rlc_mbms_rbid2lcid_eNB[NUMBER_OF_eNB_MAX][NB_RB_
     (((hash_key_t)(rNTI))   << 8)  | \
     (((hash_key_t)(iS_eNB)) << 24) | \
     (((hash_key_t)(rB_iD))  << 25) | \
-    (((hash_key_t)(iS_sRB)) << 33))
+    (((hash_key_t)(iS_sRB)) << 33) | \
+    (((hash_key_t)(0x05))   << 34))
+
+// index to the same RLC entity as RLC_COLL_KEY_VALUE(), but using LC_id instead
+// the hidden last key indicates if this is a hash-key with RB_id (0x05) or LC_id (0x0a)
+#define RLC_COLL_KEY_LCID_VALUE(eNB_iD, rNTI, iS_eNB, lC_iD, iS_sRB) \
+   ((hash_key_t)eNB_iD             | \
+    (((hash_key_t)(rNTI))   << 8)  | \
+    (((hash_key_t)(iS_eNB)) << 24) | \
+    (((hash_key_t)(lC_iD))  << 25) | \
+    (((hash_key_t)(iS_sRB)) << 33) | \
+    (((hash_key_t)(0x0a))   << 34))
 
 // service id max val is maxServiceCount = 16 (asn1_constants.h)
 
@@ -298,7 +309,7 @@ private_rlc_mac(struct mac_data_ind   mac_rlc_deserialize_tb (char*, tb_size_t, 
 //-----------------------------------------------------------------------------
 //   PUBLIC INTERFACE WITH RRC
 //-----------------------------------------------------------------------------
-#ifdef Rel10
+#if defined(Rel10) || defined(Rel14)
 /*! \fn rlc_op_status_t rrc_rlc_config_asn1_req (const protocol_ctxt_t* const ctxtP, const srb_flag_t srb_flagP, const SRB_ToAddMod_t* const srb2addmod, const DRB_ToAddModList_t* const drb2add_listP, const DRB_ToReleaseList_t*  const drb2release_listP, const PMCH_InfoList_r9_t * const pmch_info_listP)
 * \brief  Function for RRC to configure a Radio Bearer.
 * \param[in]  ctxtP              Running context.

@@ -94,6 +94,7 @@ typedef struct rrh_gw_config_s {
   uint8_t   udpif4p5;
   uint8_t   rawif4p5;
   uint8_t   rawif5_mobipass;
+  uint8_t   if_compress;
   int tx_scheduling_advance;
   int tx_sample_advance;
   int iq_txshift;
@@ -162,7 +163,7 @@ typedef struct Enb_properties_s {
   long                    pucch_delta_shift[1+MAX_NUM_CCs];
   long                    pucch_nRB_CQI[1+MAX_NUM_CCs];
   long                    pucch_nCS_AN[1+MAX_NUM_CCs];
-#ifndef Rel10
+#if !defined(Rel10) && !defined(Rel14)
   long                    pucch_n1_AN[1+MAX_NUM_CCs];
 #endif
   long                    pdsch_referenceSignalPower[1+MAX_NUM_CCs];
@@ -243,6 +244,10 @@ typedef struct Enb_properties_s {
   char               *enb_interface_name_for_S1_MME;
   in_addr_t           enb_ipv4_address_for_S1_MME;
 
+  char               *flexran_agent_interface_name;
+  in_addr_t           flexran_agent_ipv4_address;
+  tcp_udp_port_t      flexran_agent_port;
+  char               *flexran_agent_cache;
 
   /* Nb of RRH to connect to */
   uint8_t             nb_rrh_gw;

@@ -136,6 +136,20 @@ clean_all_files() {
 # Compilers
 ###################################
 
+#check_warnings:
+#    print error message if the compilation had warnings
+#argument:
+#    $1: log file
+check_warnings() {
+  #we look for 'warning:' in the compilation log file
+  #this is how gcc starts a warning
+  #this is not perfect, we may get false positive
+  warning_count=`grep "warning:" "$1"|wc -l`
+  if [ $warning_count -gt 0 ]; then
+    echo_error "WARNING: $warning_count warnings. See $1"
+  fi
+}
+
 compilations() {
   cd $OPENAIR_DIR/cmake_targets/$1/build
   set +e
@@ -153,6 +167,7 @@ compilations() {
   if [ -s $3 ] ; then
      cp $3 $4
      echo_success "$2 compiled"
+     check_warnings "$dlog/$2.$REL.txt"
   else
      echo_error "$2 compilation failed"
      exit 1
@@ -163,6 +178,42 @@ compilations() {
 # External packages installers
 ############################################
 
+install_protobuf_from_source(){
+    protobuf_install_log=$OPENAIR_DIR/cmake_targets/log/protobuf_install_log.txt
+    echo_info "\nInstalling Google Protobuf from sources. The log file for Protobuf installation is here: $protobuf_install_log "
+    (
+    cd /tmp
+    echo "Downloading protobuf"
+    rm -rf /tmp/protobuf-2.6.1.tar.gz* /tmp/protobuf-2.6.1
+    wget https://github.com/google/protobuf/releases/download/v2.6.1/protobuf-2.6.1.tar.gz
+    tar -xzvf protobuf-2.6.1.tar.gz --owner $USER --group $USER --no-same-owner
+    cd protobuf-2.6.1/
+    ./configure
+    echo "Compiling protobuf"
+    make -j`nproc`
+    $SUDO make install
+    $SUDO ldconfig
+    ) >& $protobuf_install_log
+}
+
+install_protobuf_c_from_source(){
+    protobuf_c_install_log=$OPENAIR_DIR/cmake_targets/log/protobuf_c_install_log.txt
+    echo_info "\nInstalling Google Protobuf_C from sources. The log file for Protobuf_C installation is here: $protobuf_c_install_log "
+    (
+    cd /tmp
+    echo "Downloading protobuf-c"
+    rm -rf /tmp/protobuf-c
+    git clone https://github.com/protobuf-c/protobuf-c.git
+    cd protobuf-c
+    ./autogen.sh
+    ./configure
+    echo "Compiling protobuf-c"
+    make -j`nproc`
+    $SUDO make install
+    $SUDO ldconfig
+    ) >& $protobuf_c_install_log
+}
+
 check_install_usrp_uhd_driver(){
         #first we remove old installation
         $SUDO apt-get remove -y uhd || true
@@ -172,15 +223,20 @@ check_install_usrp_uhd_driver(){
         #The new USRP repository
         $SUDO add-apt-repository ppa:ettusresearch/uhd -y
         $SUDO apt-get update
-        $SUDO apt-get -y install  python python-tk libboost-all-dev libusb-1.0-0-dev
-        $SUDO apt-get -y install libuhd-dev libuhd003 uhd-host
+        $SUDO apt-get -y --allow-unauthenticated install  python python-tk libboost-all-dev libusb-1.0-0-dev
+        $SUDO apt-get -y --allow-unauthenticated install libuhd-dev libuhd003 uhd-host
 }
 
 install_usrp_uhd_driver() {
         # We move uhd-host apart because it depends on linux kernel version
         # On newer kernels, it fails to install
         $SUDO apt-get -y install uhd-host
-        $SUDO uhd_images_downloader
+
+        if [ -z $1 ]; then
+          $SUDO uhd_images_downloader
+        else
+          $SUDO uhd_images_downloader -i $1
+        fi
 }
 
 check_install_bladerf_driver(){
@@ -188,9 +244,10 @@ check_install_bladerf_driver(){
 		$SUDO add-apt-repository -y ppa:bladerf/bladerf
 		$SUDO apt-get update
 	fi
-	$SUDO apt-get install -y bladerf libbladerf-dev
-	$SUDO apt-get install -y bladerf-firmware-fx3
-	$SUDO apt-get install -y bladerf-fpga-hostedx40
+
+	$SUDO apt-get install -y--allow-unauthenticated  bladerf libbladerf-dev
+	$SUDO apt-get install -y --allow-unauthenticated bladerf-firmware-fx3
+	$SUDO apt-get install -y --allow-unauthenticated bladerf-fpga-hostedx40
 }
 
 flash_firmware_bladerf() {
@@ -324,6 +381,7 @@ check_install_oai_software() {
 	xmlstarlet \
 	python-pip \
 	pydb \
+	libyaml-dev \
 	wget
 
     $SUDO update-alternatives --set liblapack.so /usr/lib/atlas-base/atlas/liblapack.so
@@ -337,6 +395,10 @@ check_install_oai_software() {
     $SUDO apt-get install -y libgnutls-dev
 
     install_asn1c_from_source
+    $SUDO rm -fr /opt/ssh
+    $SUDO git clone https://gist.github.com/2190472.git /opt/ssh
+    #install_protobuf_from_source
+    #install_protobuf_c_from_source
 }
 
 ### Remove Nettle installation which was done from sources
@@ -361,6 +423,7 @@ remove_nettle_from_source() {
     cd nettle-2.5/
     ./configure --disable-openssl --enable-shared --prefix=/usr
     $SUDO make uninstall || true
+    $SUDO ldconfig
     ) >& $nettle_uninstall_log
 }
 
@@ -384,6 +447,7 @@ remove_gnutls_from_source(){
     cd gnutls-3.1.23/
     ./configure --prefix=/usr
     $SUDO make uninstall || true
+    $SUDO ldconfig
     )>& $gnutls_uninstall_log
 }
 
@@ -398,6 +462,7 @@ install_asn1c_from_source(){
     make -j`nproc`
     $SUDO make install
     cd -
+    $SUDO ldconfig
     ) > $asn1_install_log 2>&1
 }
 
@@ -406,19 +471,18 @@ install_asn1c_from_source(){
 ################################################
 
 install_nas_tools() {
-  cd $1
-  if [ ! -f .ue.nvram ]; then
+  if [ ! -f .ue.nvram0 ]; then
     echo_success "generate .ue_emm.nvram .ue.nvram"
-    ./nvram --gen
+    ./nvram --gen -c $1 -o $2
   else
-    [ ./nvram -nt .ue.nvram  -o ./nvram -nt .ue_emm.nvram ] && ./nvram --gen
+    [ ./nvram -nt .ue.nvram0 -o ./nvram -nt .ue_emm.nvram0 ] && ./nvram --gen -c $1 -o $2
   fi
 
-  if [ ! -f .usim.nvram ]; then
+  if [ ! -f .usim.nvram0 ]; then
     echo_success "generate .usim.nvram"
-    ./usim --gen
+    ./usim --gen -c $1 -o $2
   else
-    [ ./usim -nt .usim.nvram ] && ./usim --gen
+    [ ./usim -nt .usim.nvram0 ] && ./usim --gen -c $1 -o $2
   fi
 
 }
