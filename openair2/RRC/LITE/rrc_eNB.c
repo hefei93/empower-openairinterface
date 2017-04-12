@@ -4806,7 +4806,7 @@ rrc_eNB_decode_dcch(
           present ==
           RRCConnectionReconfigurationComplete__criticalExtensions_PR_rrcConnectionReconfigurationComplete_r8) {
 	/*NN: revise the condition */
-        if (ue_context_p->ue_context.Status == RRC_RECONFIGURED){
+        if (ue_context_p->ue_context.Status == RRC_RECONFIGURED && ue_context_p->ue_context.meas_reconfig_flag != 1){
 	  dedicated_DRB = 1;
 	  LOG_I(RRC,
 		PROTOCOL_RRC_CTXT_UE_FMT" UE State = RRC_RECONFIGURED (dedicated DRB, xid %ld)\n",
@@ -4867,7 +4867,7 @@ rrc_eNB_decode_dcch(
 	}
       }
 #else  // establish a dedicated bearer
-      if (dedicated_DRB == 0 ) {
+      if (dedicated_DRB == 0 && ue_context_p->ue_context.meas_reconfig_flag != 1) {
 	//	ue_context_p->ue_context.e_rab[0].status = E_RAB_STATUS_ESTABLISHED;
 	rrc_eNB_reconfigure_DRBs(ctxt_pP,ue_context_p);
       }
