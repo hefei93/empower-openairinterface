@@ -43,7 +43,7 @@ void ran_sharing_dlsch_sched (
 	/* LTE DL frame parameters. */
 	LTE_DL_FRAME_PARMS *frame_parms[MAX_NUM_CCs],
 	/* Minimum number of RBs to be allocated to a UE in each CCs. */
-	uint16_t min_rb_unit[MAX_NUM_CCs]) {
+	int min_rb_unit[MAX_NUM_CCs]) {
 
 	int cc_id, i, j, t, n;
 	rnti_t rnti;
@@ -63,7 +63,8 @@ void ran_sharing_dlsch_sched (
 	unsigned char MIMO_mode_indicator[MAX_NUM_CCs][N_RBG_MAX];
 
 	/* PLMN IDs of the scheduled tenants. */
-	uint32_t scheduled_t[MAX_TENANTS] = {0};
+	char scheduled_t[MAX_TENANTS][MAX_PLMN_LEN_P_NULL];
+	memset(scheduled_t, 0, sizeof(scheduled_t));
 
 	/*
 	 * Initialize all Resource Blocks (RBs) allocated on all Component Carriers
@@ -114,8 +115,10 @@ void ran_sharing_dlsch_sched (
 		/* Clear RBs allocation for the tenants. */
 		for (cc_id = 0; cc_id < MAX_NUM_CCs; cc_id++) {
 			for (i = 0; i < N_RBG[cc_id]; i++) {
-				if (ran_sh_sc_i.rballoc_dl[sf][i][cc_id] != RBG_RESERVED) {
-					ran_sh_sc_i.rballoc_dl[sf][i][cc_id] = RBG_NO_TENANT_SCHED;
+				if (strcmp(ran_sh_sc_i.rballoc_dl[sf][i][cc_id],
+							RBG_T_RESERVED) != 0) {
+					strcpy(ran_sh_sc_i.rballoc_dl[sf][i][cc_id],
+							RBG_NO_TENANT_SCHED);
 				}
 			}
 		}
@@ -143,13 +146,17 @@ void ran_sharing_dlsch_sched (
 
 				/* Looping over all the Resource Block Group. */
 				for (i = 0; i < N_RBG[cc_id]; i++) {
-					if (ran_sh_sc_i.rballoc_dl[sf][i][cc_id] != RBG_RESERVED &&
-						ran_sh_sc_i.rballoc_dl[sf][i][cc_id] ==
-														RBG_NO_TENANT_SCHED &&
+					if (strcmp(ran_sh_sc_i.rballoc_dl[sf][i][cc_id],
+								RBG_T_RESERVED) != 0
+												&&
+						strcmp(ran_sh_sc_i.rballoc_dl[sf][i][cc_id],
+								RBG_NO_TENANT_SCHED) == 0
+												&&
 						tenant->remaining_rbs_dl[cc_id] > 0 &&
 						tenant->alloc_rbs_dl_sf[cc_id] < req_rbs_per_t) {
 
-						ran_sh_sc_i.rballoc_dl[sf][i][cc_id] = tenant->plmn_id;
+						strcpy(ran_sh_sc_i.rballoc_dl[sf][i][cc_id],
+							   tenant->plmn_id);
 
 						if ((i == N_RBG[cc_id] - 1) &&
 							((frame_parms[cc_id]->N_RB_DL == 25) ||
@@ -183,14 +190,15 @@ void ran_sharing_dlsch_sched (
 		for (i = 0; i < N_RBG[cc_id]; i++) {
 			int plmn_present = 0;
 			for (j = 0; j < MAX_TENANTS; j++) {
-				if (scheduled_t[j] == ran_sh_sc_i.rballoc_dl[sf][i][cc_id] &&
-					scheduled_t[j] != 0) {
+				if (strcmp(scheduled_t[j],
+							ran_sh_sc_i.rballoc_dl[sf][i][cc_id]) == 0 &&
+					strcmp(scheduled_t[j], "") != 0) {
 					plmn_present = 1;
 					break;
 				}
 			}
 			if (plmn_present == 0) {
-				scheduled_t[t] = ran_sh_sc_i.rballoc_dl[sf][i][cc_id];
+				strcpy(scheduled_t[t], ran_sh_sc_i.rballoc_dl[sf][i][cc_id]);
 				t++;
 			}
 		}
@@ -206,7 +214,7 @@ void ran_sharing_dlsch_sched (
 	/* Loop over all the scheduled tenants. */
 	for (j = 0; j < MAX_TENANTS; j++) {
 		/* If tenant is scheduled. */
-		if (scheduled_t[j] != 0) {
+		if (strcmp(scheduled_t[j], "") != 0) {
 
 			tn = tenant_info_get(scheduled_t[j]);
 
@@ -220,7 +228,7 @@ void ran_sharing_dlsch_sched (
 			/* UE count. */
 			t = 0;
 			for (i = 0; i < MAX_TENANTS; i++) {
-				if (scheduled_t[j] == t_ues_id[i].plmn_id) {
+				if (strcmp(scheduled_t[j], t_ues_id[i].plmn_id) == 0) {
 					for (n = 0; n < NUMBER_OF_UE_MAX; n++) {
 						rnti = UE_RNTI(m_id, t_ues_id[i].ue_ids[n]);
 						if (rnti == NOT_A_RNTI)
@@ -235,8 +243,8 @@ void ran_sharing_dlsch_sched (
 			/* Tenant UEs differentiation logic based on PLMN ID.
 			 * Does not working in case roaming enabled since PLMN ID of UE
 			 * will be the same as PLMN ID of EPC Operator.
-			 * E.g. 20893 UE getting connected to 22293 EPC on roaming
-			 * will result in PLMN ID in rrc eNB UE context to be 22293.
+			 * E.g. "20893" UE getting connected to "22293" EPC on roaming
+			 * will result in PLMN ID in rrc eNB UE context to be "22293".
 			 */
 #if 0
 			memset(tenant_ues, 0, sizeof(tenant_ues));
@@ -256,7 +264,8 @@ void ran_sharing_dlsch_sched (
 				if (rrc_ue_ctxt == NULL)
 					continue;
 
-				if (rrc_ue_ctxt->ue_context.plmn_id == scheduled_t[j]) {
+				if (strcmp(rrc_ue_ctxt->ue_context.plmn_id,
+							scheduled_t[j]) == 0) {
 					tenant_ues[t] = rnti;
 					t++;
 				}
@@ -267,7 +276,7 @@ void ran_sharing_dlsch_sched (
 	printf("\n Before Subframe %d\n", sf);
 	for (cc_id = 0; cc_id < MAX_NUM_CCs; cc_id++) {
 		for (i = 0; i < N_RBG[cc_id]; i++) {
-			printf("%" PRIu16 "\t", ran_sh_sc_i.rballoc_dl_ue[sf][i][cc_id]);
+			printf("%d\t", ran_sh_sc_i.rballoc_dl_ue[sf][i][cc_id]);
 		}
 	}
 #endif
@@ -294,13 +303,16 @@ void ran_sharing_dlsch_sched (
 	printf("\n After Subframe %d\n", sf);
 	for (cc_id = 0; cc_id < MAX_NUM_CCs; cc_id++) {
 		for (i = 0; i < N_RBG[cc_id]; i++) {
-			printf("%" PRIu16 "\t", ran_sh_sc_i.rballoc_dl_ue[sf][i][cc_id]);
+			printf("%d\t", ran_sh_sc_i.rballoc_dl_ue[sf][i][cc_id]);
 		}
 	}
 #endif
 
 	pthread_spin_unlock(&tenants_info_lock);
 	/************************** UNLOCK ********************************/
+
+	// ran_sharing_dlsch_sort_UEs (m_id);
+	sort_UEs (m_id, f, sf);
 
 	/*
 	 * Allocate Resource Blocks Groups to all scheduled for UEs of tenants.
@@ -318,6 +330,28 @@ void ran_sharing_dlsch_sched (
 								 );
 }
 
+// void ran_sharing_dlsch_sort_UEs (
+// 	/* Module identifier. */
+// 	module_id_t m_id,
+// 	/* RB allocation for UEs of the tenant in a particular subframe. */
+// 	rnti_t rballoc_ue[N_RBG_MAX][MAX_NUM_CCs]) {
+
+// 	 RNTI value of UE.
+// 	rnti_t rnti;
+
+// 	UE_list_t *UE_list = &eNB_mac_inst[m_id].UE_list;
+// 	/* Initialize the UE list head to -1. */
+// 	UE_list->head = -1;
+
+
+// 	list[list_size] = i;
+// 	list_size++;
+// 	UE_list->next[list[i]] = list[i+1];
+
+
+
+// }
+
 void ran_sharing_dlsch_sched_alloc (
 	/* Module identifier. */
 	module_id_t m_id,
@@ -332,11 +366,11 @@ void ran_sharing_dlsch_sched_alloc (
 	/* MIMO indicator. */
 	unsigned char MIMO_mode_indicator[MAX_NUM_CCs][N_RBG_MAX],
 	/* RB allocation for all tenants in a subframe. */
-	int rballoc_t[N_RBG_MAX][MAX_NUM_CCs],
+	char rballoc_t[N_RBG_MAX][MAX_NUM_CCs][MAX_PLMN_LEN_P_NULL],
 	/* RB allocation for UEs of the tenant in a particular subframe. */
 	rnti_t rballoc_ue[N_RBG_MAX][MAX_NUM_CCs],
 	/* Minimum number of RBs to be allocated to a UE in each CCs. */
-	uint16_t min_rb_unit[MAX_NUM_CCs]) {
+	int min_rb_unit[MAX_NUM_CCs]) {
 
 	int i, cc_id, ue_id, transmission_mode;
 #if 0
@@ -346,7 +380,7 @@ void ran_sharing_dlsch_sched_alloc (
 	/* RNTI value of UE. */
 	rnti_t rnti;
 	/* Tenant PLMN ID. */
-	uint32_t t_plmn_id;
+	char t_plmn_id[MAX_PLMN_LEN_P_NULL];
 
 	UE_list_t *UE_list = &eNB_mac_inst[m_id].UE_list;
 	UE_sched_ctrl *ue_sched_ctl;
@@ -355,11 +389,12 @@ void ran_sharing_dlsch_sched_alloc (
 		/* Loop over RBGs. */
 		for (i = 0; i < N_RBG_MAX; i++) {
 
-			t_plmn_id = rballoc_t[i][cc_id];
+			strcpy(t_plmn_id, rballoc_t[i][cc_id]);
 			rnti = rballoc_ue[i][cc_id];
 			/* Reserved RBG or no UE/Tenant scheduled. */
-			if (t_plmn_id == RBG_RESERVED || rnti == RBG_NO_UE_SCHED ||
-				t_plmn_id == RBG_NO_TENANT_SCHED)
+			if (strcmp(t_plmn_id, RBG_T_RESERVED) == 0 ||
+				rnti == RBG_NO_UE_SCHED ||
+				strcmp(t_plmn_id, RBG_NO_TENANT_SCHED) == 0)
 				continue;
 
 			ue_id = find_UE_id(m_id, rnti);
@@ -370,8 +405,8 @@ void ran_sharing_dlsch_sched_alloc (
 			/* Tenant UEs differentiation logic based on PLMN ID.
 			 * Does not working in case roaming enabled since PLMN ID of UE
 			 * will be the same as PLMN ID of EPC Operator.
-			 * E.g. 20893 UE getting connected to 22293 EPC on roaming
-			 * will result in PLMN ID in rrc eNB UE context to be 22293.
+			 * E.g. "20893" UE getting connected to "22293" EPC on roaming
+			 * will result in PLMN ID in rrc eNB UE context to be "22293".
 			 */
 #if 0
 			rrc_ue_ctxt = rrc_eNB_get_ue_context(&eNB_rrc_inst[m_id], rnti);
@@ -380,7 +415,7 @@ void ran_sharing_dlsch_sched_alloc (
 				continue;
 
 			/* UE does not belong to this tenant. */
-			if (rrc_ue_ctxt->ue_context.plmn_id != t_plmn_id)
+			if (strcmp(rrc_ue_ctxt->ue_context.plmn_id, t_plmn_id) != 0)
 				continue;
 #endif
 
@@ -427,7 +462,7 @@ void ran_sharing_dlsch_sched_reset (
 	/* LTE DL frame parameters. */
 	LTE_DL_FRAME_PARMS *frame_parms[MAX_NUM_CCs],
 	/* Minimum number of RBs to be allocated to a UE in each CCs. */
-	uint16_t min_rb_unit[MAX_NUM_CCs]) {
+	int min_rb_unit[MAX_NUM_CCs]) {
 
 	int i, j, cc_id, ue_id, RBGsize;
 	uint8_t *vrb_map;
@@ -475,27 +510,31 @@ void ran_sharing_dlsch_sched_reset (
 		/* Looping over all the Resource Block Group. */
 		for (i = 0; i < N_RBG[cc_id]; i++) {
 
-			// ran_sh_sc_i.rballoc_dl[sf][i][cc_id] = RBG_NO_TENANT_SCHED;
-			// ran_sh_sc_i.rballoc_dl[sf][i][cc_id] = RBG_NO_UE_SCHED;
+			// strcpy(ran_sh_sc_i.rballoc_dl[sf][i][cc_id],
+			// 		RBG_NO_TENANT_SCHED);
+			// ran_sh_sc_i.rballoc_dl_ue[sf][i][cc_id] = RBG_NO_UE_SCHED;
 
 			#ifdef SF05_LIMIT
 				/* For avoiding 6+ PRBs around DC in subframe 0-5. */
 				if ((sf == 0 || sf == 5) &&
 									(i >= sf05_lower && i <= sf05_upper)) {
-					ran_sh_sc_i.rballoc_dl[sf][i][cc_id] = RBG_RESERVED;
+					strcpy(ran_sh_sc_i.rballoc_dl[sf][i][cc_id],
+							RBG_T_RESERVED);
 					ran_sh_sc_i.rballoc_dl_ue[sf][i][cc_id] = RBG_NO_UE_SCHED;
 				}
 			#endif
 			/* SI-RNTI, RA-RNTI and P-RNTI allocations. */
 			for (j = 0; j < RBGsize; j++) {
 				if (vrb_map[j + (i * RBGsize)] != 0)  {
-					ran_sh_sc_i.rballoc_dl[sf][i][cc_id] = RBG_RESERVED;
+					strcpy(ran_sh_sc_i.rballoc_dl[sf][i][cc_id],
+							RBG_T_RESERVED);
 					ran_sh_sc_i.rballoc_dl_ue[sf][i][cc_id] = RBG_NO_UE_SCHED;
 					break;
 				}
 			}
 
-			if (ran_sh_sc_i.rballoc_dl[sf][i][cc_id] == RBG_RESERVED) {
+			if (strcmp(ran_sh_sc_i.rballoc_dl[sf][i][cc_id],
+						RBG_T_RESERVED) == 0) {
 				if ((i == N_RBG[cc_id] - 1) &&
 					((frame_parms[cc_id]->N_RB_DL == 25) ||
 						(frame_parms[cc_id]->N_RB_DL == 50))) {
@@ -515,15 +554,22 @@ void ran_sharing_dlsch_sched_reset (
 		/* Reset RB allocations for all UEs. */
 		for (ue_id = UE_list->head; ue_id >= 0; ue_id = UE_list->next[ue_id]) {
 
+			if (UE_list->active[ue_id] != TRUE)
+				continue;
+
 			ue_sched_ctl = &UE_list->UE_sched_ctrl[ue_id];
 			rnti = UE_RNTI(m_id, ue_id);
 
 			eNB_UE_stats = mac_xface->get_eNB_UE_stats(m_id, cc_id, rnti);
+
+			if (eNB_UE_stats == NULL)
+				continue;
+
 			/* Initialize harq_pid and round. */
 			mac_xface->get_ue_active_harq_pid(m_id, cc_id, rnti, f, sf,
 											&ue_sched_ctl->harq_pid[cc_id],
 											&ue_sched_ctl->round[cc_id],
-											0);
+											openair_harq_DL);
 
 			if (ue_sched_ctl->ta_timer == 0) {
 				/* Wait 20 subframes before taking TA measurement from PHY. */
@@ -555,8 +601,14 @@ void ran_sharing_dlsch_sched_reset (
 					break;
 
 					case 100:
-					ue_sched_ctl->ta_update =
+						if (PHY_vars_eNB_g[m_id][cc_id]->
+											frame_parms.threequarter_fs == 0) {
+							ue_sched_ctl->ta_update =
 									eNB_UE_stats->timing_advance_update / 16;
+						} else {
+							ue_sched_ctl->ta_update =
+									eNB_UE_stats->timing_advance_update / 12;
+						}
 					break;
 				}
 				/* Clear the update in case PHY does not have a new measurement
@@ -584,7 +636,7 @@ void ran_sharing_dlsch_sched_reset (
 	printf("\n Subframe %d\n", sf);
 	for (cc_id = 0; cc_id < MAX_NUM_CCs; cc_id++) {
 		for (i = 0; i < N_RBG[cc_id]; i++) {
-			printf("%d\t", ran_sh_sc_i.rballoc_dl[sf][i][cc_id]);
+			printf("%s\t", ran_sh_sc_i.rballoc_dl[sf][i][cc_id]);
 		}
 		printf("total aval rbs %d\n", ran_sh_sc_i.total_avail_rbs_dl[sf][cc_id]);
 	}
@@ -603,10 +655,10 @@ int ran_sharing_sched_init (
 	t1 = calloc(1, sizeof(*t1));
 	t2 = calloc(1, sizeof(*t2));
 
-	t1->plmn_id = 22293;
+	strcpy(t1->plmn_id, "22293");
 	t1->ue_downlink_sched = assign_rbs_RR_DL;
 
-	t2->plmn_id = 20893;
+	strcpy(t2->plmn_id, "20893");
 	t2->ue_downlink_sched = assign_rbs_RR_DL;
 
 	tenant_info_add(t1);
@@ -625,57 +677,57 @@ int ran_sharing_sched_init (
 
 	// SIB1_update_tenant(m_id);
 
-	int rballoc_dl[NUM_SF_IN_FRAME][N_RBG_MAX][MAX_NUM_CCs] = {
-		{ {0}, {0}, {0}, {0}, {-1}, {-1}, {-1}, {-1}, {22293}, {22293}, {20893}, {20893}, {20893} },
-		{ {22293}, {22293}, {22293}, {22293}, {22293}, {22293}, {22293}, {22293}, {22293}, {22293}, {20893}, {20893}, {20893} },
-		{ {22293}, {22293}, {22293}, {22293}, {22293}, {22293}, {22293}, {22293}, {22293}, {22293}, {20893}, {20893}, {20893} },
-		{ {22293}, {22293}, {22293}, {22293}, {22293}, {22293}, {22293}, {22293}, {22293}, {22293}, {20893}, {20893}, {20893} },
-		{ {22293}, {22293}, {22293}, {22293}, {22293}, {22293}, {22293}, {22293}, {22293}, {22293}, {20893}, {20893}, {20893} },
-		{ {-1}, {-1}, {-1}, {-1}, {-1}, {-1}, {-1}, {-1}, {22293}, {22293}, {20893}, {-1}, {-1} },
-		{ {22293}, {22293}, {22293}, {22293}, {22293}, {22293}, {22293}, {22293}, {22293}, {22293}, {20893}, {20893}, {20893} },
-		{ {22293}, {22293}, {22293}, {22293}, {22293}, {22293}, {22293}, {22293}, {22293}, {22293}, {20893}, {20893}, {20893} },
-		{ {22293}, {22293}, {22293}, {22293}, {22293}, {22293}, {22293}, {22293}, {22293}, {22293}, {20893}, {20893}, {20893} },
-		{ {22293}, {22293}, {22293}, {22293}, {22293}, {22293}, {22293}, {22293}, {22293}, {22293}, {20893}, {20893}, {20893} }
+	char rballoc_dl[NUM_SF_IN_FRAME][N_RBG_MAX][MAX_NUM_CCs][MAX_PLMN_LEN_P_NULL] = {
+		{ {"0"}, {"0"}, {"0"}, {"0"}, {"-1"}, {"-1"}, {"-1"}, {"-1"}, {"22293"}, {"22293"}, {"20893"}, {"20893"}, {"20893"} },
+		{ {"22293"}, {"22293"}, {"22293"}, {"22293"}, {"22293"}, {"22293"}, {"22293"}, {"22293"}, {"22293"}, {"22293"}, {"20893"}, {"20893"}, {"20893"} },
+		{ {"22293"}, {"22293"}, {"22293"}, {"22293"}, {"22293"}, {"22293"}, {"22293"}, {"22293"}, {"22293"}, {"22293"}, {"20893"}, {"20893"}, {"20893"} },
+		{ {"22293"}, {"22293"}, {"22293"}, {"22293"}, {"22293"}, {"22293"}, {"22293"}, {"22293"}, {"22293"}, {"22293"}, {"20893"}, {"20893"}, {"20893"} },
+		{ {"22293"}, {"22293"}, {"22293"}, {"22293"}, {"22293"}, {"22293"}, {"22293"}, {"22293"}, {"22293"}, {"22293"}, {"20893"}, {"20893"}, {"20893"} },
+		{ {"-1"}, {"-1"}, {"-1"}, {"-1"}, {"-1"}, {"-1"}, {"-1"}, {"-1"}, {"22293"}, {"22293"}, {"20893"}, {"-1"}, {"-1"} },
+		{ {"22293"}, {"22293"}, {"22293"}, {"22293"}, {"22293"}, {"22293"}, {"22293"}, {"22293"}, {"22293"}, {"22293"}, {"20893"}, {"20893"}, {"20893"} },
+		{ {"22293"}, {"22293"}, {"22293"}, {"22293"}, {"22293"}, {"22293"}, {"22293"}, {"22293"}, {"22293"}, {"22293"}, {"20893"}, {"20893"}, {"20893"} },
+		{ {"22293"}, {"22293"}, {"22293"}, {"22293"}, {"22293"}, {"22293"}, {"22293"}, {"22293"}, {"22293"}, {"22293"}, {"20893"}, {"20893"}, {"20893"} },
+		{ {"22293"}, {"22293"}, {"22293"}, {"22293"}, {"22293"}, {"22293"}, {"22293"}, {"22293"}, {"22293"}, {"22293"}, {"20893"}, {"20893"}, {"20893"} }
 	};
 
-	// int rballoc_dl[NUM_SF_IN_FRAME][N_RBG_MAX][MAX_NUM_CCs] = {
-	// 	{ {0}, {0}, {0}, {0}, {-1}, {-1}, {-1}, {-1}, {22293}, {20893}, {20893}, {22293}, {20893} },
-	// 	{ {22293}, {22293}, {20893}, {22293}, {22293}, {20893}, {22293}, {22293}, {22293}, {22293}, {22293}, {20893}, {22293} },
-	// 	{ {22293}, {22293}, {20893}, {22293}, {22293}, {20893}, {22293}, {22293}, {22293}, {22293}, {22293}, {20893}, {22293} },
-	// 	{ {22293}, {22293}, {20893}, {22293}, {22293}, {20893}, {22293}, {22293}, {22293}, {22293}, {22293}, {20893}, {22293} },
-	// 	{ {22293}, {22293}, {20893}, {22293}, {22293}, {20893}, {22293}, {22293}, {22293}, {22293}, {22293}, {20893}, {22293} },
-	// 	{ {-1}, {-1}, {-1}, {-1}, {-1}, {-1}, {-1}, {-1}, {22293}, {20893}, {22293}, {-1}, {-1} },
-	// 	{ {22293}, {22293}, {20893}, {22293}, {22293}, {20893}, {22293}, {22293}, {22293}, {22293}, {22293}, {20893}, {22293} },
-	// 	{ {22293}, {22293}, {20893}, {22293}, {22293}, {20893}, {22293}, {22293}, {22293}, {22293}, {22293}, {20893}, {22293} },
-	// 	{ {22293}, {22293}, {20893}, {22293}, {22293}, {20893}, {22293}, {22293}, {22293}, {22293}, {22293}, {20893}, {22293} },
-	// 	{ {22293}, {22293}, {20893}, {22293}, {22293}, {20893}, {22293}, {22293}, {22293}, {22293}, {22293}, {20893}, {22293} }
+	// char rballoc_dl[NUM_SF_IN_FRAME][N_RBG_MAX][MAX_NUM_CCs][MAX_PLMN_LEN_P_NULL] = {
+	// 	{ {"0"}, {"0"}, {"0"}, {"0"}, {"-1"}, {"-1"}, {"-1"}, {"-1"}, {"22293"}, {"20893"}, {"20893"}, {"22293"}, {"20893"} },
+	// 	{ {"22293"}, {"22293"}, {"20893"}, {"22293"}, {"22293"}, {"20893"}, {"22293"}, {"22293"}, {"22293"}, {"22293"}, {"22293"}, {"20893"}, {"22293"} },
+	// 	{ {"22293"}, {"22293"}, {"20893"}, {"22293"}, {"22293"}, {"20893"}, {"22293"}, {"22293"}, {"22293"}, {"22293"}, {"22293"}, {"20893"}, {"22293"} },
+	// 	{ {"22293"}, {"22293"}, {"20893"}, {"22293"}, {"22293"}, {"20893"}, {"22293"}, {"22293"}, {"22293"}, {"22293"}, {"22293"}, {"20893"}, {"22293"} },
+	// 	{ {"22293"}, {"22293"}, {"20893"}, {"22293"}, {"22293"}, {"20893"}, {"22293"}, {"22293"}, {"22293"}, {"22293"}, {"22293"}, {"20893"}, {"22293"} },
+	// 	{ {"-1"}, {"-1"}, {"-1"}, {"-1"}, {"-1"}, {"-1"}, {"-1"}, {"-1"}, {"22293"}, {"20893"}, {"22293"}, {"-1"}, {"-1"} },
+	// 	{ {"22293"}, {"22293"}, {"20893"}, {"22293"}, {"22293"}, {"20893"}, {"22293"}, {"22293"}, {"22293"}, {"22293"}, {"22293"}, {"20893"}, {"22293"} },
+	// 	{ {"22293"}, {"22293"}, {"20893"}, {"22293"}, {"22293"}, {"20893"}, {"22293"}, {"22293"}, {"22293"}, {"22293"}, {"22293"}, {"20893"}, {"22293"} },
+	// 	{ {"22293"}, {"22293"}, {"20893"}, {"22293"}, {"22293"}, {"20893"}, {"22293"}, {"22293"}, {"22293"}, {"22293"}, {"22293"}, {"20893"}, {"22293"} },
+	// 	{ {"22293"}, {"22293"}, {"20893"}, {"22293"}, {"22293"}, {"20893"}, {"22293"}, {"22293"}, {"22293"}, {"22293"}, {"22293"}, {"20893"}, {"22293"} }
 	// };
 
-	// int rballoc_dl[NUM_SF_IN_FRAME][N_RBG_MAX][MAX_NUM_CCs] = {
-	// 	{ {0}, {0}, {0}, {0}, {-1}, {-1}, {-1}, {-1}, {22293}, {20893}, {22293}, {20893}, {22293} },
-	// 	{ {22293}, {20893}, {22293}, {20893}, {22293}, {20893}, {22293}, {20893}, {22293}, {20893}, {22293}, {20893}, {22293} },
-	// 	{ {22293}, {20893}, {22293}, {20893}, {22293}, {20893}, {22293}, {20893}, {22293}, {20893}, {22293}, {20893}, {22293} },
-	// 	{ {22293}, {20893}, {22293}, {20893}, {22293}, {20893}, {22293}, {20893}, {22293}, {20893}, {22293}, {20893}, {22293} },
-	// 	{ {22293}, {20893}, {22293}, {20893}, {22293}, {20893}, {22293}, {20893}, {22293}, {20893}, {22293}, {20893}, {22293} },
-	// 	{ {-1}, {-1}, {-1}, {-1}, {-1}, {-1}, {-1}, {-1}, {22293}, {20893}, {22293}, {-1}, {-1} },
-	// 	{ {22293}, {20893}, {22293}, {20893}, {22293}, {20893}, {22293}, {20893}, {22293}, {20893}, {22293}, {20893}, {22293} },
-	// 	{ {22293}, {20893}, {22293}, {20893}, {22293}, {20893}, {22293}, {20893}, {22293}, {20893}, {22293}, {20893}, {22293} },
-	// 	{ {22293}, {20893}, {22293}, {20893}, {22293}, {20893}, {22293}, {20893}, {22293}, {20893}, {22293}, {20893}, {22293} },
-	// 	{ {22293}, {20893}, {22293}, {20893}, {22293}, {20893}, {22293}, {20893}, {22293}, {20893}, {22293}, {20893}, {22293} },
+	// char rballoc_dl[NUM_SF_IN_FRAME][N_RBG_MAX][MAX_NUM_CCs][MAX_PLMN_LEN_P_NULL] = {
+	// 	{ {"0"}, {"0"}, {"0"}, {"0"}, {"-1"}, {"-1"}, {"-1"}, {"-1"}, {"22293"}, {"20893"}, {"22293"}, {"20893"}, {"22293"} },
+	// 	{ {"22293"}, {"20893"}, {"22293"}, {"20893"}, {"22293"}, {"20893"}, {"22293"}, {"20893"}, {"22293"}, {"20893"}, {"22293"}, {"20893"}, {"22293"} },
+	// 	{ {"22293"}, {"20893"}, {"22293"}, {"20893"}, {"22293"}, {"20893"}, {"22293"}, {"20893"}, {"22293"}, {"20893"}, {"22293"}, {"20893"}, {"22293"} },
+	// 	{ {"22293"}, {"20893"}, {"22293"}, {"20893"}, {"22293"}, {"20893"}, {"22293"}, {"20893"}, {"22293"}, {"20893"}, {"22293"}, {"20893"}, {"22293"} },
+	// 	{ {"22293"}, {"20893"}, {"22293"}, {"20893"}, {"22293"}, {"20893"}, {"22293"}, {"20893"}, {"22293"}, {"20893"}, {"22293"}, {"20893"}, {"22293"} },
+	// 	{ {"-1"}, {"-1"}, {"-1"}, {"-1"}, {"-1"}, {"-1"}, {"-1"}, {"-1"}, {"22293"}, {"20893"}, {"22293"}, {"-1"}, {"-1"} },
+	// 	{ {"22293"}, {"20893"}, {"22293"}, {"20893"}, {"22293"}, {"20893"}, {"22293"}, {"20893"}, {"22293"}, {"20893"}, {"22293"}, {"20893"}, {"22293"} },
+	// 	{ {"22293"}, {"20893"}, {"22293"}, {"20893"}, {"22293"}, {"20893"}, {"22293"}, {"20893"}, {"22293"}, {"20893"}, {"22293"}, {"20893"}, {"22293"} },
+	// 	{ {"22293"}, {"20893"}, {"22293"}, {"20893"}, {"22293"}, {"20893"}, {"22293"}, {"20893"}, {"22293"}, {"20893"}, {"22293"}, {"20893"}, {"22293"} },
+	// 	{ {"22293"}, {"20893"}, {"22293"}, {"20893"}, {"22293"}, {"20893"}, {"22293"}, {"20893"}, {"22293"}, {"20893"}, {"22293"}, {"20893"}, {"22293"} },
 	// };
 
 	/* Smiley */
-	// int rballoc_dl[NUM_SF_IN_FRAME][N_RBG_MAX][MAX_NUM_CCs] = {
-	// 	{     {0},     {0},     {0},     {0},    {-1},    {-1},    {-1},    {-1}, {20893}, {20893}, {20893}, {20893}, {20893} },
-	// 	{ {20893}, {20893}, {20893}, {20893}, {20893}, {20893}, {20893}, {20893}, {20893}, {20893}, {20893}, {20893}, {20893} },
-	// 	{ {20893}, {20893}, {20893}, {20893}, {20893}, {20893}, {20893}, {20893}, {20893}, {22293}, {20893}, {22293}, {20893} },
-	// 	{ {20893}, {20893}, {20893}, {20893}, {20893}, {20893}, {20893}, {20893}, {20893}, {22293}, {20893}, {22293}, {20893} },
-	// 	{ {20893}, {20893}, {20893}, {20893}, {20893}, {20893}, {20893}, {20893}, {20893}, {20893}, {20893}, {20893}, {20893} },
-	// 	{    {-1},    {-1},    {-1},    {-1},    {-1},    {-1},    {-1},    {-1}, {20893}, {20893}, {20893},    {-1},    {-1} },
-	// 	{ {20893}, {20893}, {20893}, {20893}, {20893}, {20893}, {20893}, {20893}, {22293}, {20893}, {20893}, {20893}, {22293} },
-	// 	{ {20893}, {20893}, {20893}, {20893}, {20893}, {20893}, {20893}, {20893}, {22293}, {22293}, {20893}, {22293}, {22293} },
-	// 	{ {20893}, {20893}, {20893}, {20893}, {20893}, {20893}, {20893}, {20893}, {20893}, {22293}, {22293}, {22293}, {20893} },
-	// 	{ {20893}, {20893}, {20893}, {20893}, {20893}, {20893}, {20893}, {20893}, {20893}, {20893}, {22293}, {20893}, {20893} }
+	// char rballoc_dl[NUM_SF_IN_FRAME][N_RBG_MAX][MAX_NUM_CCs][MAX_PLMN_LEN_P_NULL] = {
+	// 	{     {"0"},     {"0"},     {"0"},     {"0"},    {"-1"},    {"-1"},    {"-1"},    {"-1"}, {"20893"}, {"20893"}, {"20893"}, {"20893"}, {"20893"} },
+	// 	{ {"20893"}, {"20893"}, {"20893"}, {"20893"}, {"20893"}, {"20893"}, {"20893"}, {"20893"}, {"20893"}, {"20893"}, {"20893"}, {"20893"}, {"20893"} },
+	// 	{ {"20893"}, {"20893"}, {"20893"}, {"20893"}, {"20893"}, {"20893"}, {"20893"}, {"20893"}, {"20893"}, {"22293"}, {"20893"}, {"22293"}, {"20893"} },
+	// 	{ {"20893"}, {"20893"}, {"20893"}, {"20893"}, {"20893"}, {"20893"}, {"20893"}, {"20893"}, {"20893"}, {"22293"}, {"20893"}, {"22293"}, {"20893"} },
+	// 	{ {"20893"}, {"20893"}, {"20893"}, {"20893"}, {"20893"}, {"20893"}, {"20893"}, {"20893"}, {"20893"}, {"20893"}, {"20893"}, {"20893"}, {"20893"} },
+	// 	{    {"-1"},    {"-1"},    {"-1"},    {"-1"},    {"-1"},    {"-1"},    {"-1"},    {"-1"}, {"20893"}, {"20893"}, {"20893"},    {"-1"},    {"-1"} },
+	// 	{ {"20893"}, {"20893"}, {"20893"}, {"20893"}, {"20893"}, {"20893"}, {"20893"}, {"20893"}, {"22293"}, {"20893"}, {"20893"}, {"20893"}, {"22293"} },
+	// 	{ {"20893"}, {"20893"}, {"20893"}, {"20893"}, {"20893"}, {"20893"}, {"20893"}, {"20893"}, {"22293"}, {"22293"}, {"20893"}, {"22293"}, {"22293"} },
+	// 	{ {"20893"}, {"20893"}, {"20893"}, {"20893"}, {"20893"}, {"20893"}, {"20893"}, {"20893"}, {"20893"}, {"22293"}, {"22293"}, {"22293"}, {"20893"} },
+	// 	{ {"20893"}, {"20893"}, {"20893"}, {"20893"}, {"20893"}, {"20893"}, {"20893"}, {"20893"}, {"20893"}, {"20893"}, {"22293"}, {"20893"}, {"20893"} }
 	// };
 
 	memcpy(ran_sh_sc_i.rballoc_dl, rballoc_dl, sizeof(rballoc_dl));
@@ -685,12 +737,12 @@ int ran_sharing_sched_init (
 	memset(t_ues_id[0].ue_ids, -1, sizeof(t_ues_id[0].ue_ids));
 	memset(t_ues_id[1].ue_ids, -1, sizeof(t_ues_id[1].ue_ids));
 
-	t_ues_id[0].plmn_id = 22293;
+	strcpy(t_ues_id[0].plmn_id, "22293");
 	t_ues_id[0].ue_ids[0] = 0;
 	t_ues_id[0].ue_ids[1] = 2;
 	t_ues_id[0].ue_ids[2] = 4;
 
-	t_ues_id[1].plmn_id = 20893;
+	strcpy(t_ues_id[1].plmn_id, "20893");
 	t_ues_id[1].ue_ids[0] = 1;
 	t_ues_id[1].ue_ids[1] = 3;
 	t_ues_id[1].ue_ids[2] = 5;

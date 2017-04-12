@@ -33,7 +33,7 @@ typedef struct tenant_info {
 	/* Tree related data */
 	RB_ENTRY(tenant_info) tenant_i;
 	/* PLMN ID of the tenant. */
-	uint32_t plmn_id;
+	char plmn_id[MAX_PLMN_LEN_P_NULL];
 	/* List of UEs belonging to a tenant. */
 	rnti_t ues_rnti[NUMBER_OF_UE_MAX];
 
@@ -42,7 +42,7 @@ typedef struct tenant_info {
 	/* UE downlink scheduler selected by the tenant. */
 	void (*ue_downlink_sched) (
 		/* PLMN ID of the tenant. */
-		uint32_t plmn_id,
+		char plmn_id[MAX_PLMN_LEN_P_NULL],
 		/* Module identifier. */
 		module_id_t m_id,
 		/* Current frame number. */
@@ -58,11 +58,11 @@ typedef struct tenant_info {
 		/* LTE DL frame parameters. */
 		LTE_DL_FRAME_PARMS *frame_parms[MAX_NUM_CCs],
 		/* RB allocation for tenants in a subframe. */
-		int rballoc_t[N_RBG_MAX][MAX_NUM_CCs],
+		char rballoc_t[N_RBG_MAX][MAX_NUM_CCs][MAX_PLMN_LEN_P_NULL],
 		/* RB allocation for UEs of all tenants in a particular frame. */
 		rnti_t rballoc_ue[NUM_SF_IN_FRAME][N_RBG_MAX][MAX_NUM_CCs],
 		/* Minimum number of resource blocks that can be allocated to a UE. */
-		uint16_t min_rb_unit[MAX_NUM_CCs],
+		int min_rb_unit[MAX_NUM_CCs],
 		/* UEs RNTI values belonging to a tenant. */
 		rnti_t tenant_ues[NUMBER_OF_UE_MAX]);
 
@@ -101,7 +101,7 @@ int tenants_info_comp (struct tenant_info *t1, struct tenant_info *t2);
 
 /* Fetches tenant information based on PLMN ID.
  */
-struct tenant_info* tenant_info_get (uint32_t plmn_id);
+struct tenant_info * tenant_info_get (char plmn_id[MAX_PLMN_LEN_P_NULL]);
 
 /* Removes tenant information from tree.
  */

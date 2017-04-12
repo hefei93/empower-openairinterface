@@ -160,7 +160,7 @@ int emoai_ran_sharing_ctrl (
 
 			/* Add the tenant information to the tree. */
 			t = malloc(sizeof(struct tenant_info));
-			t->plmn_id = req->tenant->plmn_id;
+			strcpy(t->plmn_id, req->tenant->plmn_id);
 
 			t->dl_ue_sched_ctrl_info =
 								malloc(sizeof(*req->tenant->downlink_ue_sched));
@@ -248,7 +248,7 @@ int emoai_ran_sharing_ctrl (
 			/**************************** LOCK ********************************/
 			pthread_spin_lock(&tenants_info_lock);
 
-			t_i->plmn_id = req->tenant->plmn_id;
+			strcpy(t_i->plmn_id, req->tenant->plmn_id);
 
 			ue_scheduler__free_unpacked(t_i->dl_ue_sched_ctrl_info, 0);
 			ue_scheduler__free_unpacked(t_i->ul_ue_sched_ctrl_info, 0);
@@ -388,8 +388,8 @@ int SIB1_update_tenant (
 				tenants_info_tree,
 				&ran_sh_sc_i.tenant_info_head) {
 
-			char plmn[7];
-			sprintf(plmn, "%d", tenant->plmn_id);
+			char plmn[MAX_PLMN_LEN_P_NULL];
+			strcpy(plmn, tenant->plmn_id);
 
 			if ((strlen(plmn) < 5) || (strlen(plmn) > 6))
 				return -1;

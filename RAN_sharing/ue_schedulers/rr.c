@@ -20,7 +20,7 @@
 
 struct tenants_rr_sched_i {
 	/* PLMN ID of the tenant. */
-	uint32_t plmn_id;
+	char plmn_id[MAX_PLMN_LEN_P_NULL];
 	/* Previously scheduled RNTI of the UE. */
 	rnti_t rnti;
 };
@@ -31,7 +31,7 @@ struct tenants_rr_sched_i t_rr_sched_i[MAX_TENANTS];
 */
 void assign_rbs_RR_DL (
 	/* PLMN ID of the tenant. */
-	uint32_t plmn_id,
+	char plmn_id[MAX_PLMN_LEN_P_NULL],
 	/* Module identifier. */
 	module_id_t m_id,
 	/* Current frame number. */
@@ -47,11 +47,11 @@ void assign_rbs_RR_DL (
 	/* LTE DL frame parameters. */
 	LTE_DL_FRAME_PARMS *frame_parms[MAX_NUM_CCs],
 	/* RB allocation for tenants in a subframe. */
-	int rballoc_t[N_RBG_MAX][MAX_NUM_CCs],
+	char rballoc_t[N_RBG_MAX][MAX_NUM_CCs][MAX_PLMN_LEN_P_NULL],
 	/* RB allocation for UEs of all tenants in a particular frame. */
 	rnti_t rballoc_ue[NUM_SF_IN_FRAME][N_RBG_MAX][MAX_NUM_CCs],
 	/* Minimum number of resource blocks that can be allocated to a UE. */
-	uint16_t min_rb_unit[MAX_NUM_CCs],
+	int min_rb_unit[MAX_NUM_CCs],
 	/* UEs RNTI values belonging to a tenant. */
 	rnti_t tenant_ues[NUMBER_OF_UE_MAX]) {
 
@@ -61,7 +61,7 @@ void assign_rbs_RR_DL (
 
 	/* Search for tenant information maitained by the RR scheduler. */
 	for (i = 0; i < MAX_TENANTS; i++) {
-		if (t_rr_sched_i[i].plmn_id == plmn_id) {
+		if (strcmp(t_rr_sched_i[i].plmn_id, plmn_id) == 0) {
 			t_rr = &t_rr_sched_i[i];
 			break;
 		}
@@ -71,7 +71,7 @@ void assign_rbs_RR_DL (
 
 		/* Compute number of tenants using Round Robin scheduler. */
 		for (i = 0; i < MAX_TENANTS; i++) {
-			if (t_rr_sched_i[i].plmn_id != 0) {
+			if (strcmp(t_rr_sched_i[i].plmn_id, "") != 0) {
 				num_tenants++;
 			}
 		}
@@ -82,8 +82,8 @@ void assign_rbs_RR_DL (
 		}
 
 		for (i = 0; i < MAX_TENANTS; i++) {
-			if (t_rr_sched_i[i].plmn_id == 0) {
-				t_rr_sched_i[i].plmn_id = plmn_id;
+			if (strcmp(t_rr_sched_i[i].plmn_id, "") == 0) {
+				strcpy(t_rr_sched_i[i].plmn_id, plmn_id);
 				t_rr = &t_rr_sched_i[i];
 				break;
 			}
@@ -108,7 +108,7 @@ void assign_rbs_RR_DL (
 	/* Assign all the RBG allocated to the tenant to the scheduled UE. */
 	for (cc_id = 0; cc_id < MAX_NUM_CCs; cc_id++) {
 		for (j = 0; j < N_RBG[cc_id]; j++) {
-			if (rballoc_t[j][cc_id] == plmn_id) {
+			if (strcmp(rballoc_t[j][cc_id], plmn_id) == 0) {
 				rballoc_ue[sf][j][cc_id] = sched_ue;
 			}
 		}

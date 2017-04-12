@@ -17,6 +17,8 @@
  * Handles loading, switching, unloading of UE and tenant scheduler libraries.
  */
 
+#include "ran_sharing_sched.h"
+
 /* Holds the information related to UE schedulers based on scheduler name.
  */
 struct ue_sched {
@@ -28,7 +30,7 @@ struct ue_sched {
 	/* UE downlink scheduler handle. */
 	void (*ue_downlink_sched) (
 		/* PLMN ID of the tenant. */
-		uint32_t plmn_id;
+		char plmn_id[MAX_PLMN_LEN_P_NULL],
 		/* Module identifier. */
 		module_id_t m_id,
 		/* Current frame number. */
@@ -53,19 +55,3 @@ struct ue_sched {
 /* Compares two UE schedulers based on scheduler name.
  */
 int ue_scheds_comp (struct ue_sched * s1, struct ue_sched * s2);
-
-/* Fetches UE scheduler on scheduler name.
- */
-struct tenant_info* tenant_info_get (char * name);
-
-/* Removes UE scheduler from tree.
- */
-int tenant_info_rem (struct ue_sched * ue_sch);
-
-/* Insert tenant information into tree.
- */
-int tenant_info_add (struct tenant_info * tenant_i);
-
-/* RB Tree holding all tenants information.
- */
-struct tenants_info_tree;

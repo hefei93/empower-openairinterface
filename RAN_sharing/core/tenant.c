@@ -28,16 +28,10 @@ RB_GENERATE(
 
 int tenants_info_comp (struct tenant_info *t1, struct tenant_info *t2) {
 
-	if (t1->plmn_id > t2->plmn_id) {
-		return 1;
-	}
-	if (t1->plmn_id < t2->plmn_id) {
-		return -1;
-	}
-	return 0;
+	return strcmp(t1->plmn_id, t2->plmn_id);
 }
 
-struct tenant_info* tenant_info_get (uint32_t plmn_id) {
+struct tenant_info * tenant_info_get (char plmn_id[MAX_PLMN_LEN_P_NULL]) {
 
 	struct tenant_info *t = NULL;
 
@@ -46,7 +40,7 @@ struct tenant_info* tenant_info_get (uint32_t plmn_id) {
 				t,
 				tenants_info_tree,
 				&ran_sh_sc_i.tenant_info_head) {
-		if (t->plmn_id == plmn_id) {
+		if (strcmp(t->plmn_id, plmn_id) == 0) {
 			return t;
 		}
 	}
@@ -64,6 +58,8 @@ int tenant_info_rem (struct tenant_info *t) {
 		ue_scheduler__free_unpacked(t->dl_ue_sched_ctrl_info, 0);
 		ue_scheduler__free_unpacked(t->ul_ue_sched_ctrl_info, 0);
 		free(t);
+	} else {
+		return -1;
 	}
 
 	return 0;
@@ -87,7 +83,7 @@ int tenant_info_add (struct tenant_info *t) {
 	return 0;
 }
 
-int tenant_add_ue (uint32_t plmn_id, rnti_t rnti) {
+int tenant_add_ue (char plmn_id[MAX_PLMN_LEN_P_NULL], rnti_t rnti) {
 
 	struct tenant_info *t = NULL;
 
@@ -96,7 +92,7 @@ int tenant_add_ue (uint32_t plmn_id, rnti_t rnti) {
 				t,
 				tenants_info_tree,
 				&ran_sh_sc_i.tenant_info_head) {
-		if (t->plmn_id == plmn_id) {
+		if (strcmp(t->plmn_id, plmn_id) == 0) {
 
 			for (int i = 0; i < NUMBER_OF_UE_MAX; i++) {
 				if (t->ues_rnti[i] == NOT_A_RNTI) {
@@ -109,7 +105,7 @@ int tenant_add_ue (uint32_t plmn_id, rnti_t rnti) {
 	return -1;
 }
 
-int tenant_rem_ue (uint32_t plmn_id, rnti_t rnti) {
+int tenant_rem_ue (char plmn_id[MAX_PLMN_LEN_P_NULL], rnti_t rnti) {
 
 	struct tenant_info *t = NULL;
 
@@ -118,7 +114,7 @@ int tenant_rem_ue (uint32_t plmn_id, rnti_t rnti) {
 				t,
 				tenants_info_tree,
 				&ran_sh_sc_i.tenant_info_head) {
-		if (t->plmn_id == plmn_id) {
+		if (strcmp(t->plmn_id, plmn_id) == 0) {
 
 			for (int i = 0; i < NUMBER_OF_UE_MAX; i++) {
 				if (t->ues_rnti[i] == rnti) {
