@@ -150,10 +150,19 @@ int emoai_UEs_ID_report (
 				active_ue_id[n_active_ue_id - 1] = malloc(sizeof(ActiveUe));
 				active_ue__init(active_ue_id[n_active_ue_id - 1]);
 				active_ue_id[n_active_ue_id - 1]->rnti = emoai_get_ue_crnti(i);
-				active_ue_id[n_active_ue_id - 1]->has_imsi = 1;
-				active_ue_id[n_active_ue_id - 1]->imsi = emoai_get_ue_imsi(i);
+				active_ue_id[n_active_ue_id - 1]->imsi =
+													malloc(16 * sizeof(char));
+				strcpy(
+					active_ue_id[n_active_ue_id - 1]->imsi,
+					emoai_get_ue_imsi(i));
+				// active_ue_id[n_active_ue_id - 1]->imsi = emoai_get_ue_imsi(i);
 				active_ue_id[n_active_ue_id - 1]->plmn_id =
-												emoai_get_selected_plmn_id(i);
+													malloc(7 * sizeof(char));
+				strcpy(
+					active_ue_id[n_active_ue_id - 1]->plmn_id,
+					emoai_get_selected_plmn_id(i));
+				// active_ue_id[n_active_ue_id - 1]->plmn_id =
+				// 								emoai_get_selected_plmn_id(i);
 			} else {
 				++n_inactive_ue_id;
 				inactive_ue_id = realloc(inactive_ue_id,
@@ -163,11 +172,20 @@ int emoai_UEs_ID_report (
 				inactive_ue__init(inactive_ue_id[n_inactive_ue_id - 1]);
 				inactive_ue_id[n_inactive_ue_id - 1]->rnti =
 														emoai_get_ue_crnti(i);
-				inactive_ue_id[n_inactive_ue_id - 1]->has_imsi = 1;
 				inactive_ue_id[n_inactive_ue_id - 1]->imsi =
-														emoai_get_ue_imsi(i);
+													malloc(16 * sizeof(char));
+				strcpy(
+					inactive_ue_id[n_inactive_ue_id - 1]->imsi,
+					emoai_get_ue_imsi(i));
+				// inactive_ue_id[n_inactive_ue_id - 1]->imsi =
+				// 										emoai_get_ue_imsi(i);
 				inactive_ue_id[n_inactive_ue_id - 1]->plmn_id =
-												emoai_get_selected_plmn_id(i);
+													malloc(7 * sizeof(char));
+				strcpy(
+					inactive_ue_id[n_inactive_ue_id - 1]->plmn_id,
+					emoai_get_selected_plmn_id(i));
+				// inactive_ue_id[n_inactive_ue_id - 1]->plmn_id =
+				// 								emoai_get_selected_plmn_id(i);
 			}
 		}
 	}

@@ -598,22 +598,38 @@ rrc_eNB_send_S1AP_UPLINK_NAS(
               decode_identity_response(&e_msg->identity_response, pdu_buff, pdu_len);
 
               if (e_msg->identity_response.mobileidentity.imsi.typeofidentity == MOBILE_IDENTITY_IMSI) {
-                ue_context_pP->ue_context.ue_imsi = 0;
-                ue_context_pP->ue_context.ue_imsi = e_msg->identity_response.mobileidentity.imsi.digit15;
-                ue_context_pP->ue_context.ue_imsi += e_msg->identity_response.mobileidentity.imsi.digit14 * 10;
-                ue_context_pP->ue_context.ue_imsi += e_msg->identity_response.mobileidentity.imsi.digit13 * 100;
-                ue_context_pP->ue_context.ue_imsi += e_msg->identity_response.mobileidentity.imsi.digit12 * 1000;
-                ue_context_pP->ue_context.ue_imsi += e_msg->identity_response.mobileidentity.imsi.digit11 * 10000;
-                ue_context_pP->ue_context.ue_imsi += e_msg->identity_response.mobileidentity.imsi.digit10 * 100000;
-                ue_context_pP->ue_context.ue_imsi += e_msg->identity_response.mobileidentity.imsi.digit9 * 1000000;
-                ue_context_pP->ue_context.ue_imsi += e_msg->identity_response.mobileidentity.imsi.digit8 * 10000000;
-                ue_context_pP->ue_context.ue_imsi += e_msg->identity_response.mobileidentity.imsi.digit7 * 100000000;
-                ue_context_pP->ue_context.ue_imsi += e_msg->identity_response.mobileidentity.imsi.digit6 * 1000000000;
-                ue_context_pP->ue_context.ue_imsi += e_msg->identity_response.mobileidentity.imsi.digit5 * 10000000000;
-                ue_context_pP->ue_context.ue_imsi += e_msg->identity_response.mobileidentity.imsi.digit4 * 100000000000;
-                ue_context_pP->ue_context.ue_imsi += e_msg->identity_response.mobileidentity.imsi.digit3 * 1000000000000;
-                ue_context_pP->ue_context.ue_imsi += e_msg->identity_response.mobileidentity.imsi.digit2 * 10000000000000;
-                ue_context_pP->ue_context.ue_imsi += e_msg->identity_response.mobileidentity.imsi.digit1 * 100000000000000;
+                // ue_context_pP->ue_context.ue_imsi = 0;
+                // ue_context_pP->ue_context.ue_imsi = e_msg->identity_response.mobileidentity.imsi.digit15;
+                // ue_context_pP->ue_context.ue_imsi += e_msg->identity_response.mobileidentity.imsi.digit14 * 10;
+                // ue_context_pP->ue_context.ue_imsi += e_msg->identity_response.mobileidentity.imsi.digit13 * 100;
+                // ue_context_pP->ue_context.ue_imsi += e_msg->identity_response.mobileidentity.imsi.digit12 * 1000;
+                // ue_context_pP->ue_context.ue_imsi += e_msg->identity_response.mobileidentity.imsi.digit11 * 10000;
+                // ue_context_pP->ue_context.ue_imsi += e_msg->identity_response.mobileidentity.imsi.digit10 * 100000;
+                // ue_context_pP->ue_context.ue_imsi += e_msg->identity_response.mobileidentity.imsi.digit9 * 1000000;
+                // ue_context_pP->ue_context.ue_imsi += e_msg->identity_response.mobileidentity.imsi.digit8 * 10000000;
+                // ue_context_pP->ue_context.ue_imsi += e_msg->identity_response.mobileidentity.imsi.digit7 * 100000000;
+                // ue_context_pP->ue_context.ue_imsi += e_msg->identity_response.mobileidentity.imsi.digit6 * 1000000000;
+                // ue_context_pP->ue_context.ue_imsi += e_msg->identity_response.mobileidentity.imsi.digit5 * 10000000000;
+                // ue_context_pP->ue_context.ue_imsi += e_msg->identity_response.mobileidentity.imsi.digit4 * 100000000000;
+                // ue_context_pP->ue_context.ue_imsi += e_msg->identity_response.mobileidentity.imsi.digit3 * 1000000000000;
+                // ue_context_pP->ue_context.ue_imsi += e_msg->identity_response.mobileidentity.imsi.digit2 * 10000000000000;
+                // ue_context_pP->ue_context.ue_imsi += e_msg->identity_response.mobileidentity.imsi.digit1 * 100000000000000;
+                ue_context_pP->ue_context.ue_imsi[0] = '0' + e_msg->identity_response.mobileidentity.imsi.digit1;
+                ue_context_pP->ue_context.ue_imsi[1] = '0' + e_msg->identity_response.mobileidentity.imsi.digit2;
+                ue_context_pP->ue_context.ue_imsi[2] = '0' + e_msg->identity_response.mobileidentity.imsi.digit3;
+                ue_context_pP->ue_context.ue_imsi[3] = '0' + e_msg->identity_response.mobileidentity.imsi.digit4;
+                ue_context_pP->ue_context.ue_imsi[4] = '0' + e_msg->identity_response.mobileidentity.imsi.digit5;
+                ue_context_pP->ue_context.ue_imsi[5] = '0' + e_msg->identity_response.mobileidentity.imsi.digit6;
+                ue_context_pP->ue_context.ue_imsi[6] = '0' + e_msg->identity_response.mobileidentity.imsi.digit7;
+                ue_context_pP->ue_context.ue_imsi[7] = '0' + e_msg->identity_response.mobileidentity.imsi.digit8;
+                ue_context_pP->ue_context.ue_imsi[8] = '0' + e_msg->identity_response.mobileidentity.imsi.digit9;
+                ue_context_pP->ue_context.ue_imsi[9] = '0' + e_msg->identity_response.mobileidentity.imsi.digit10;
+                ue_context_pP->ue_context.ue_imsi[10] = '0' + e_msg->identity_response.mobileidentity.imsi.digit11;
+                ue_context_pP->ue_context.ue_imsi[11] = '0' + e_msg->identity_response.mobileidentity.imsi.digit12;
+                ue_context_pP->ue_context.ue_imsi[12] = '0' + e_msg->identity_response.mobileidentity.imsi.digit13;
+                ue_context_pP->ue_context.ue_imsi[13] = '0' + e_msg->identity_response.mobileidentity.imsi.digit14;
+                ue_context_pP->ue_context.ue_imsi[14] = '0' + e_msg->identity_response.mobileidentity.imsi.digit15;
+                ue_context_pP->ue_context.ue_imsi[15] = '\0';
               }
             }
 
@@ -710,22 +726,38 @@ rrc_eNB_send_S1AP_UPLINK_NAS(
                   decode_identity_response(&e_msg->identity_response, pdu_buff, pdu_len);
 
                   if (e_msg->identity_response.mobileidentity.imsi.typeofidentity == MOBILE_IDENTITY_IMSI) {
-                    ue_context_pP->ue_context.ue_imsi = 0;
-                    ue_context_pP->ue_context.ue_imsi = e_msg->identity_response.mobileidentity.imsi.digit15;
-                    ue_context_pP->ue_context.ue_imsi += e_msg->identity_response.mobileidentity.imsi.digit14 * 10;
-                    ue_context_pP->ue_context.ue_imsi += e_msg->identity_response.mobileidentity.imsi.digit13 * 100;
-                    ue_context_pP->ue_context.ue_imsi += e_msg->identity_response.mobileidentity.imsi.digit12 * 1000;
-                    ue_context_pP->ue_context.ue_imsi += e_msg->identity_response.mobileidentity.imsi.digit11 * 10000;
-                    ue_context_pP->ue_context.ue_imsi += e_msg->identity_response.mobileidentity.imsi.digit10 * 100000;
-                    ue_context_pP->ue_context.ue_imsi += e_msg->identity_response.mobileidentity.imsi.digit9 * 1000000;
-                    ue_context_pP->ue_context.ue_imsi += e_msg->identity_response.mobileidentity.imsi.digit8 * 10000000;
-                    ue_context_pP->ue_context.ue_imsi += e_msg->identity_response.mobileidentity.imsi.digit7 * 100000000;
-                    ue_context_pP->ue_context.ue_imsi += e_msg->identity_response.mobileidentity.imsi.digit6 * 1000000000;
-                    ue_context_pP->ue_context.ue_imsi += e_msg->identity_response.mobileidentity.imsi.digit5 * 10000000000;
-                    ue_context_pP->ue_context.ue_imsi += e_msg->identity_response.mobileidentity.imsi.digit4 * 100000000000;
-                    ue_context_pP->ue_context.ue_imsi += e_msg->identity_response.mobileidentity.imsi.digit3 * 1000000000000;
-                    ue_context_pP->ue_context.ue_imsi += e_msg->identity_response.mobileidentity.imsi.digit2 * 10000000000000;
-                    ue_context_pP->ue_context.ue_imsi += e_msg->identity_response.mobileidentity.imsi.digit1 * 100000000000000;
+                    // ue_context_pP->ue_context.ue_imsi = 0;
+                    // ue_context_pP->ue_context.ue_imsi = e_msg->identity_response.mobileidentity.imsi.digit15;
+                    // ue_context_pP->ue_context.ue_imsi += e_msg->identity_response.mobileidentity.imsi.digit14 * 10;
+                    // ue_context_pP->ue_context.ue_imsi += e_msg->identity_response.mobileidentity.imsi.digit13 * 100;
+                    // ue_context_pP->ue_context.ue_imsi += e_msg->identity_response.mobileidentity.imsi.digit12 * 1000;
+                    // ue_context_pP->ue_context.ue_imsi += e_msg->identity_response.mobileidentity.imsi.digit11 * 10000;
+                    // ue_context_pP->ue_context.ue_imsi += e_msg->identity_response.mobileidentity.imsi.digit10 * 100000;
+                    // ue_context_pP->ue_context.ue_imsi += e_msg->identity_response.mobileidentity.imsi.digit9 * 1000000;
+                    // ue_context_pP->ue_context.ue_imsi += e_msg->identity_response.mobileidentity.imsi.digit8 * 10000000;
+                    // ue_context_pP->ue_context.ue_imsi += e_msg->identity_response.mobileidentity.imsi.digit7 * 100000000;
+                    // ue_context_pP->ue_context.ue_imsi += e_msg->identity_response.mobileidentity.imsi.digit6 * 1000000000;
+                    // ue_context_pP->ue_context.ue_imsi += e_msg->identity_response.mobileidentity.imsi.digit5 * 10000000000;
+                    // ue_context_pP->ue_context.ue_imsi += e_msg->identity_response.mobileidentity.imsi.digit4 * 100000000000;
+                    // ue_context_pP->ue_context.ue_imsi += e_msg->identity_response.mobileidentity.imsi.digit3 * 1000000000000;
+                    // ue_context_pP->ue_context.ue_imsi += e_msg->identity_response.mobileidentity.imsi.digit2 * 10000000000000;
+                    // ue_context_pP->ue_context.ue_imsi += e_msg->identity_response.mobileidentity.imsi.digit1 * 100000000000000;
+                    ue_context_pP->ue_context.ue_imsi[0] = '0' + e_msg->identity_response.mobileidentity.imsi.digit1;
+                    ue_context_pP->ue_context.ue_imsi[1] = '0' + e_msg->identity_response.mobileidentity.imsi.digit2;
+                    ue_context_pP->ue_context.ue_imsi[2] = '0' + e_msg->identity_response.mobileidentity.imsi.digit3;
+                    ue_context_pP->ue_context.ue_imsi[3] = '0' + e_msg->identity_response.mobileidentity.imsi.digit4;
+                    ue_context_pP->ue_context.ue_imsi[4] = '0' + e_msg->identity_response.mobileidentity.imsi.digit5;
+                    ue_context_pP->ue_context.ue_imsi[5] = '0' + e_msg->identity_response.mobileidentity.imsi.digit6;
+                    ue_context_pP->ue_context.ue_imsi[6] = '0' + e_msg->identity_response.mobileidentity.imsi.digit7;
+                    ue_context_pP->ue_context.ue_imsi[7] = '0' + e_msg->identity_response.mobileidentity.imsi.digit8;
+                    ue_context_pP->ue_context.ue_imsi[8] = '0' + e_msg->identity_response.mobileidentity.imsi.digit9;
+                    ue_context_pP->ue_context.ue_imsi[9] = '0' + e_msg->identity_response.mobileidentity.imsi.digit10;
+                    ue_context_pP->ue_context.ue_imsi[10] = '0' + e_msg->identity_response.mobileidentity.imsi.digit11;
+                    ue_context_pP->ue_context.ue_imsi[11] = '0' + e_msg->identity_response.mobileidentity.imsi.digit12;
+                    ue_context_pP->ue_context.ue_imsi[12] = '0' + e_msg->identity_response.mobileidentity.imsi.digit13;
+                    ue_context_pP->ue_context.ue_imsi[13] = '0' + e_msg->identity_response.mobileidentity.imsi.digit14;
+                    ue_context_pP->ue_context.ue_imsi[14] = '0' + e_msg->identity_response.mobileidentity.imsi.digit15;
+                    ue_context_pP->ue_context.ue_imsi[15] = '\0';
                   }
                 }
 
@@ -904,36 +936,62 @@ rrc_eNB_send_S1AP_NAS_FIRST_REQ(
             decode_attach_request(&e_msg->attach_request, pdu_buff, pdu_len);
 
             if (e_msg->attach_request.oldgutiorimsi.imsi.typeofidentity == MOBILE_IDENTITY_IMSI) {
-              ue_context_pP->ue_context.ue_imsi = 0;
-              ue_context_pP->ue_context.ue_imsi = e_msg->attach_request.oldgutiorimsi.imsi.digit15;
-              ue_context_pP->ue_context.ue_imsi += e_msg->attach_request.oldgutiorimsi.imsi.digit14 * 10;
-              ue_context_pP->ue_context.ue_imsi += e_msg->attach_request.oldgutiorimsi.imsi.digit13 * 100;
-              ue_context_pP->ue_context.ue_imsi += e_msg->attach_request.oldgutiorimsi.imsi.digit12 * 1000;
-              ue_context_pP->ue_context.ue_imsi += e_msg->attach_request.oldgutiorimsi.imsi.digit11 * 10000;
-              ue_context_pP->ue_context.ue_imsi += e_msg->attach_request.oldgutiorimsi.imsi.digit10 * 100000;
-              ue_context_pP->ue_context.ue_imsi += e_msg->attach_request.oldgutiorimsi.imsi.digit9 * 1000000;
-              ue_context_pP->ue_context.ue_imsi += e_msg->attach_request.oldgutiorimsi.imsi.digit8 * 10000000;
-              ue_context_pP->ue_context.ue_imsi += e_msg->attach_request.oldgutiorimsi.imsi.digit7 * 100000000;
-              ue_context_pP->ue_context.ue_imsi += e_msg->attach_request.oldgutiorimsi.imsi.digit6 * 1000000000;
-              ue_context_pP->ue_context.ue_imsi += e_msg->attach_request.oldgutiorimsi.imsi.digit5 * 10000000000;
-              ue_context_pP->ue_context.ue_imsi += e_msg->attach_request.oldgutiorimsi.imsi.digit4 * 100000000000;
-              ue_context_pP->ue_context.ue_imsi += e_msg->attach_request.oldgutiorimsi.imsi.digit3 * 1000000000000;
-              ue_context_pP->ue_context.ue_imsi += e_msg->attach_request.oldgutiorimsi.imsi.digit2 * 10000000000000;
-              ue_context_pP->ue_context.ue_imsi += e_msg->attach_request.oldgutiorimsi.imsi.digit1 * 100000000000000;
+              // ue_context_pP->ue_context.ue_imsi = 0;
+              // ue_context_pP->ue_context.ue_imsi = e_msg->attach_request.oldgutiorimsi.imsi.digit15;
+              // ue_context_pP->ue_context.ue_imsi += e_msg->attach_request.oldgutiorimsi.imsi.digit14 * 10;
+              // ue_context_pP->ue_context.ue_imsi += e_msg->attach_request.oldgutiorimsi.imsi.digit13 * 100;
+              // ue_context_pP->ue_context.ue_imsi += e_msg->attach_request.oldgutiorimsi.imsi.digit12 * 1000;
+              // ue_context_pP->ue_context.ue_imsi += e_msg->attach_request.oldgutiorimsi.imsi.digit11 * 10000;
+              // ue_context_pP->ue_context.ue_imsi += e_msg->attach_request.oldgutiorimsi.imsi.digit10 * 100000;
+              // ue_context_pP->ue_context.ue_imsi += e_msg->attach_request.oldgutiorimsi.imsi.digit9 * 1000000;
+              // ue_context_pP->ue_context.ue_imsi += e_msg->attach_request.oldgutiorimsi.imsi.digit8 * 10000000;
+              // ue_context_pP->ue_context.ue_imsi += e_msg->attach_request.oldgutiorimsi.imsi.digit7 * 100000000;
+              // ue_context_pP->ue_context.ue_imsi += e_msg->attach_request.oldgutiorimsi.imsi.digit6 * 1000000000;
+              // ue_context_pP->ue_context.ue_imsi += e_msg->attach_request.oldgutiorimsi.imsi.digit5 * 10000000000;
+              // ue_context_pP->ue_context.ue_imsi += e_msg->attach_request.oldgutiorimsi.imsi.digit4 * 100000000000;
+              // ue_context_pP->ue_context.ue_imsi += e_msg->attach_request.oldgutiorimsi.imsi.digit3 * 1000000000000;
+              // ue_context_pP->ue_context.ue_imsi += e_msg->attach_request.oldgutiorimsi.imsi.digit2 * 10000000000000;
+              // ue_context_pP->ue_context.ue_imsi += e_msg->attach_request.oldgutiorimsi.imsi.digit1 * 100000000000000;
+              ue_context_pP->ue_context.ue_imsi[0] = '0' + e_msg->attach_request.oldgutiorimsi.imsi.digit1;
+              ue_context_pP->ue_context.ue_imsi[1] = '0' + e_msg->attach_request.oldgutiorimsi.imsi.digit2;
+              ue_context_pP->ue_context.ue_imsi[2] = '0' + e_msg->attach_request.oldgutiorimsi.imsi.digit3;
+              ue_context_pP->ue_context.ue_imsi[3] = '0' + e_msg->attach_request.oldgutiorimsi.imsi.digit4;
+              ue_context_pP->ue_context.ue_imsi[4] = '0' + e_msg->attach_request.oldgutiorimsi.imsi.digit5;
+              ue_context_pP->ue_context.ue_imsi[5] = '0' + e_msg->attach_request.oldgutiorimsi.imsi.digit6;
+              ue_context_pP->ue_context.ue_imsi[6] = '0' + e_msg->attach_request.oldgutiorimsi.imsi.digit7;
+              ue_context_pP->ue_context.ue_imsi[7] =  '0' + e_msg->attach_request.oldgutiorimsi.imsi.digit8;
+              ue_context_pP->ue_context.ue_imsi[8] = '0' + e_msg->attach_request.oldgutiorimsi.imsi.digit9;
+              ue_context_pP->ue_context.ue_imsi[9] = '0' + e_msg->attach_request.oldgutiorimsi.imsi.digit10;
+              ue_context_pP->ue_context.ue_imsi[10] = '0' + e_msg->attach_request.oldgutiorimsi.imsi.digit11;
+              ue_context_pP->ue_context.ue_imsi[11] = '0' + e_msg->attach_request.oldgutiorimsi.imsi.digit12;
+              ue_context_pP->ue_context.ue_imsi[12] = '0' + e_msg->attach_request.oldgutiorimsi.imsi.digit13;
+              ue_context_pP->ue_context.ue_imsi[13] = '0' + e_msg->attach_request.oldgutiorimsi.imsi.digit14;
+              ue_context_pP->ue_context.ue_imsi[14] = '0' + e_msg->attach_request.oldgutiorimsi.imsi.digit15;
+              ue_context_pP->ue_context.ue_imsi[15] = '\0';
             }
             // else if (e_msg->attach_request.oldgutiorimsi.guti.typeofidentity == EPS_MOBILE_IDENTITY_GUTI) {
-            //   ue_context_pP->ue_context.plmn_id = e_msg->attach_request.oldgutiorimsi.guti.mccdigit1;
-            //   ue_context_pP->ue_context.plmn_id *= 10;
-            //   ue_context_pP->ue_context.plmn_id += e_msg->attach_request.oldgutiorimsi.guti.mccdigit2;
-            //   ue_context_pP->ue_context.plmn_id *= 10;
-            //   ue_context_pP->ue_context.plmn_id += e_msg->attach_request.oldgutiorimsi.guti.mccdigit3;
-            //   ue_context_pP->ue_context.plmn_id *= 10;
-            //   ue_context_pP->ue_context.plmn_id += e_msg->attach_request.oldgutiorimsi.guti.mncdigit1;
-            //   ue_context_pP->ue_context.plmn_id *= 10;
-            //   ue_context_pP->ue_context.plmn_id += e_msg->attach_request.oldgutiorimsi.guti.mncdigit2;
+            //   // ue_context_pP->ue_context.plmn_id = e_msg->attach_request.oldgutiorimsi.guti.mccdigit1;
+            //   // ue_context_pP->ue_context.plmn_id *= 10;
+            //   // ue_context_pP->ue_context.plmn_id += e_msg->attach_request.oldgutiorimsi.guti.mccdigit2;
+            //   // ue_context_pP->ue_context.plmn_id *= 10;
+            //   // ue_context_pP->ue_context.plmn_id += e_msg->attach_request.oldgutiorimsi.guti.mccdigit3;
+            //   // ue_context_pP->ue_context.plmn_id *= 10;
+            //   // ue_context_pP->ue_context.plmn_id += e_msg->attach_request.oldgutiorimsi.guti.mncdigit1;
+            //   // ue_context_pP->ue_context.plmn_id *= 10;
+            //   // ue_context_pP->ue_context.plmn_id += e_msg->attach_request.oldgutiorimsi.guti.mncdigit2;
+            //   // if (e_msg->attach_request.oldgutiorimsi.guti.mncdigit3 != 0xF) {
+            //   //   ue_context_pP->ue_context.plmn_id *= 10;
+            //   //   ue_context_pP->ue_context.plmn_id += e_msg->attach_request.oldgutiorimsi.guti.mncdigit3;
+            //   // }
+            //   ue_context_pP->ue_context.plmn_id[0] = '0' + e_msg->attach_request.oldgutiorimsi.guti.mccdigit1;
+            //   ue_context_pP->ue_context.plmn_id[1] = '0' + e_msg->attach_request.oldgutiorimsi.guti.mccdigit2;
+            //   ue_context_pP->ue_context.plmn_id[2] = '0' + e_msg->attach_request.oldgutiorimsi.guti.mccdigit3;
+            //   ue_context_pP->ue_context.plmn_id[3] = '0' + e_msg->attach_request.oldgutiorimsi.guti.mncdigit1;
+            //   ue_context_pP->ue_context.plmn_id[4] = '0' + e_msg->attach_request.oldgutiorimsi.guti.mncdigit2;
+            //   ue_context_pP->ue_context.plmn_id[5] = '\0';
             //   if (e_msg->attach_request.oldgutiorimsi.guti.mncdigit3 != 0xF) {
-            //     ue_context_pP->ue_context.plmn_id *= 10;
-            //     ue_context_pP->ue_context.plmn_id += e_msg->attach_request.oldgutiorimsi.guti.mncdigit3;
+            //     ue_context_pP->ue_context.plmn_id[5] = '0' + e_msg->attach_request.oldgutiorimsi.guti.mncdigit3;
+            //     ue_context_pP->ue_context.plmn_id[6] = '\0';
             //   }
             // }
           }
@@ -1149,16 +1207,22 @@ rrc_eNB_process_S1AP_DOWNLINK_NAS(
         struct s1ap_eNB_ue_context_s *s1ap_ue_ctxt = NULL;
         s1ap_ue_ctxt = s1ap_eNB_get_ue_context(s1ap_eNB_instance_p, ue_context_p->ue_context.eNB_ue_s1ap_id);
         if (s1ap_ue_ctxt != NULL) {
-          uint16_t mcc = s1ap_ue_ctxt->eNB_instance->mcc;
-          uint16_t mnc = s1ap_ue_ctxt->eNB_instance->mnc;
-          uint8_t  mnc_digit_length = s1ap_ue_ctxt->eNB_instance->mnc_digit_length;
-          ue_context_p->ue_context.plmn_id = mcc;
-          if (mnc_digit_length > 2) {
-            ue_context_p->ue_context.plmn_id *= 1000;
-          } else {
-            ue_context_p->ue_context.plmn_id *= 100;
-          }
-          ue_context_p->ue_context.plmn_id += mnc;
+          // uint16_t mcc = s1ap_ue_ctxt->eNB_instance->mcc;
+          // uint16_t mnc = s1ap_ue_ctxt->eNB_instance->mnc;
+          // uint8_t  mnc_digit_length = s1ap_ue_ctxt->eNB_instance->mnc_digit_length;
+          // ue_context_p->ue_context.plmn_id = mcc;
+          // if (mnc_digit_length > 2) {
+          //   ue_context_p->ue_context.plmn_id *= 1000;
+          // } else {
+          //   ue_context_p->ue_context.plmn_id *= 100;
+          // }
+          // ue_context_p->ue_context.plmn_id += mnc;
+
+          char mcc[4], mnc[4];
+          sprintf(mcc, "%d", s1ap_ue_ctxt->eNB_instance->mcc);
+          sprintf(mnc, "%d", s1ap_ue_ctxt->eNB_instance->mnc);
+          strcat(ue_context_p->ue_context.plmn_id, mcc);
+          strcat(ue_context_p->ue_context.plmn_id, mnc);
         }
       }
       /* PLMN ID extraction without NAS hack */
@@ -1349,18 +1413,28 @@ int rrc_eNB_process_S1AP_INITIAL_CONTEXT_SETUP_REQ(MessageDef *msg_p, const char
     //           decode_attach_accept(&e_msg->attach_accept, pdu_buff, pdu_len);
 
     //           if (e_msg->attach_accept.guti.guti.typeofidentity == EPS_MOBILE_IDENTITY_GUTI) {
-    //             ue_context_p->ue_context.plmn_id = e_msg->attach_accept.guti.guti.mccdigit1;
-    //             ue_context_p->ue_context.plmn_id *= 10;
-    //             ue_context_p->ue_context.plmn_id += e_msg->attach_accept.guti.guti.mccdigit2;
-    //             ue_context_p->ue_context.plmn_id *= 10;
-    //             ue_context_p->ue_context.plmn_id += e_msg->attach_accept.guti.guti.mccdigit3;
-    //             ue_context_p->ue_context.plmn_id *= 10;
-    //             ue_context_p->ue_context.plmn_id += e_msg->attach_accept.guti.guti.mncdigit1;
-    //             ue_context_p->ue_context.plmn_id *= 10;
-    //             ue_context_p->ue_context.plmn_id += e_msg->attach_accept.guti.guti.mncdigit2;
+    //             // ue_context_p->ue_context.plmn_id = e_msg->attach_accept.guti.guti.mccdigit1;
+    //             // ue_context_p->ue_context.plmn_id *= 10;
+    //             // ue_context_p->ue_context.plmn_id += e_msg->attach_accept.guti.guti.mccdigit2;
+    //             // ue_context_p->ue_context.plmn_id *= 10;
+    //             // ue_context_p->ue_context.plmn_id += e_msg->attach_accept.guti.guti.mccdigit3;
+    //             // ue_context_p->ue_context.plmn_id *= 10;
+    //             // ue_context_p->ue_context.plmn_id += e_msg->attach_accept.guti.guti.mncdigit1;
+    //             // ue_context_p->ue_context.plmn_id *= 10;
+    //             // ue_context_p->ue_context.plmn_id += e_msg->attach_accept.guti.guti.mncdigit2;
+    //             // if (e_msg->attach_accept.guti.guti.mncdigit3 != 0xF) {
+    //             //   ue_context_p->ue_context.plmn_id *= 10;
+    //             //   ue_context_p->ue_context.plmn_id += e_msg->attach_accept.guti.guti.mncdigit3;
+    //             // }
+    //             ue_context_p->ue_context.plmn_id[0] = '0' + e_msg->attach_accept.guti.guti.mccdigit1;
+    //             ue_context_p->ue_context.plmn_id[1] = '0' + e_msg->attach_accept.guti.guti.mccdigit2;
+    //             ue_context_p->ue_context.plmn_id[2] = '0' + e_msg->attach_accept.guti.guti.mccdigit3;
+    //             ue_context_p->ue_context.plmn_id[3] = '0' + e_msg->attach_accept.guti.guti.mncdigit1;
+    //             ue_context_p->ue_context.plmn_id[4] = '0' + e_msg->attach_accept.guti.guti.mncdigit2;
+    //             ue_context_p->ue_context.plmn_id[5] = '\0';
     //             if (e_msg->attach_accept.guti.guti.mncdigit3 != 0xF) {
-    //               ue_context_p->ue_context.plmn_id *= 10;
-    //               ue_context_p->ue_context.plmn_id += e_msg->attach_accept.guti.guti.mncdigit3;
+    //               ue_context_p->ue_context.plmn_id[5] = '0' + e_msg->attach_accept.guti.guti.mncdigit3;
+    //               ue_context_p->ue_context.plmn_id[6] = '\0';
     //             }
     //           }
     //         }
