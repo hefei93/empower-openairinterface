@@ -19,14 +19,23 @@
 #define SF05_LIMIT 1
 
 #include "ran_sharing_sched.h"
+#include "ran_sharing_extern.h"
+#include "tenant.h"
+#include "rr.h"
 
+#include "emoai.h"
+
+#include "openair1/SCHED/defs.h"
 #include "RRC/LITE/extern.h"
 #include "openair1/PHY/extern.h"
 #include "RRC/LITE/rrc_eNB_UE_context.h"
 
+/* Global context of the RAN sharing in eNB. */
+eNB_ran_sharing eNB_ran_sh;
+
 /* Holds the information related to UE Ids belonging all the tenants.
  */
-struct tenant_ue_ids t_ues_id[MAX_TENANTS];
+tenant_ue_ids t_ues_id[MAX_TENANTS];
 
 void ran_sharing_dlsch_sched (
 	/* Module identifier. */
@@ -45,16 +54,18 @@ void ran_sharing_dlsch_sched (
 	/* Minimum number of RBs to be allocated to a UE in each CCs. */
 	int min_rb_unit[MAX_NUM_CCs]) {
 
-	int cc_id, i, j, t, n;
+	int cc_id, i, j, t, n, id;
 	rnti_t rnti;
-	struct tenant_info *tn, *tenant;
+	tenant_info tn, *tenant;
+	uint64_t sw_sf;
+	cell_ran_sharing *cell;
+	/* List of UEs. */
+	UE_list_t *UE_list = &eNB_mac_inst[m_id].UE_list;
 
 #if 0
 	/* UEs RNTI values belonging to a tenant. */
 	rnti_t tenant_ues[NUMBER_OF_UE_MAX];
 	int ue_id;
-	/* List of UEs. */
-	UE_list_t *UE_list = &eNB_mac_inst[m_id].UE_list;
 	/* UE RRC eNB context. */
 	struct rrc_eNB_ue_context_s *rrc_ue_ctxt;
 #endif
@@ -63,8 +74,13 @@ void ran_sharing_dlsch_sched (
 	unsigned char MIMO_mode_indicator[MAX_NUM_CCs][N_RBG_MAX];
 
 	/* PLMN IDs of the scheduled tenants. */
-	char scheduled_t[MAX_TENANTS][MAX_PLMN_LEN_P_NULL];
-	memset(scheduled_t, 0, sizeof(scheduled_t));
+	uint32_t scheduled_t[MAX_TENANTS] = {0};
+
+	/* Tracking the SF number in DL scheduling window. */
+	eNB_ran_sh.dl_sw_sf = (f * NUM_SF_IN_FRAME + sf) %
+													eNB_ran_sh.sched_window_dl;
+
+	sw_sf = eNB_ran_sh.dl_sw_sf;
 
 	/*
 	 * Initialize all Resource Blocks (RBs) allocated on all Component Carriers
@@ -74,37 +90,53 @@ void ran_sharing_dlsch_sched (
 									m_id,
 									f,
 									sf,
+									sw_sf,
 									N_RBG,
 									MIMO_mode_indicator,
 									mbsfn_flag,
 									frame_parms,
-									min_rb_unit
+									min_rb_unit,
+									eNB_ran_sh.sched_window_dl,
+									eNB_ran_sh.cell
 								 );
+
 
 	/* Store the DLSCH buffer for each logical channel. */
 	store_dlsch_buffer(m_id, f, sf);
 
 	/* In case of tenant downlink scheduler being present. */
-	if (ran_sh_sc_i.tenant_sched_dl != NULL) {
+	if (eNB_ran_sh.tenant_sched_dl != NULL) {
 
-		/* Tenant scheduler implementation logic start. */
+/***************** Tenant scheduler implementation logic start. ***************/
 
 		/* Reset the value of remaining RBS in Downlink at the start of every
-		 * frame. i.e start of subframe 0.
+		 * scheduling window.
 		*/
-		if (sf == 0) {
+		if (eNB_ran_sh.dl_sw_sf == 0) {
 			/**************************** LOCK ********************************/
 			pthread_spin_lock(&tenants_info_lock);
 
-			RB_FOREACH(
-				tenant,
-				tenants_info_tree,
-				&ran_sh_sc_i.tenant_info_head) {
+			for (i = 0; i < MAX_TENANTS; i++) {
+
+				if (eNB_ran_sh.tenants[i].plmn_id == 0)
+					continue;
+
+				tenant = &eNB_ran_sh.tenants[i];
 
 				for (cc_id = 0; cc_id < MAX_NUM_CCs; cc_id++) {
+					tenant->remaining_rbs_dl[cc_id] = 0;
 					tenant->alloc_rbs_dl_sf[cc_id] = 0;
-					tenant->remaining_rbs_dl[cc_id] =
-					tenant->dl_ue_sched_ctrl_info->num_rbs_every_frame[cc_id];
+				}
+
+				for (n = 0; n < tenant->rbs_req->n_rbs_dl; n++) {
+					id = pci_to_cc_id(
+							m_id,
+							tenant->rbs_req->rbs_dl[n]->phys_cell_id);
+					/* Invalid CC Id. */
+					if (id < 0)
+						continue;
+					tenant->remaining_rbs_dl[id] =
+											tenant->rbs_req->rbs_dl[n]->num_rbs;
 				}
 			}
 
@@ -114,11 +146,11 @@ void ran_sharing_dlsch_sched (
 
 		/* Clear RBs allocation for the tenants. */
 		for (cc_id = 0; cc_id < MAX_NUM_CCs; cc_id++) {
-			for (i = 0; i < N_RBG[cc_id]; i++) {
-				if (strcmp(ran_sh_sc_i.rballoc_dl[sf][i][cc_id],
-							RBG_T_RESERVED) != 0) {
-					strcpy(ran_sh_sc_i.rballoc_dl[sf][i][cc_id],
-							RBG_NO_TENANT_SCHED);
+			cell = &eNB_ran_sh.cell[cc_id];
+			/* Looping over all the Resource Blocks. */
+			for (i = 0; i < frame_parms[cc_id]->N_RB_DL; i++) {
+				if (cell->sfalloc_dl[sw_sf].rbs_alloc[i] != RB_RESERVED) {
+					cell->sfalloc_dl[sw_sf].rbs_alloc[i] = RB_NOT_SCHED;
 				}
 			}
 		}
@@ -128,50 +160,53 @@ void ran_sharing_dlsch_sched (
 		/**************************** LOCK ************************************/
 		pthread_spin_lock(&tenants_info_lock);
 
-		/* Assign resource blocks groups to tenants. */
-		for (cc_id = 0; cc_id < MAX_NUM_CCs; cc_id++) {
+		/* Loop over tenants and assign RBs to tenants. */
+		for (i = 0; i < MAX_TENANTS; i++) {
 
-			tenant->alloc_rbs_dl_sf[cc_id] = 0;
-			/* Loop over tenants and assign RBGs to tenants. */
-			RB_FOREACH(
-				tenant,
-				tenants_info_tree,
-				&ran_sh_sc_i.tenant_info_head) {
+			if (eNB_ran_sh.tenants[i].plmn_id == 0)
+				continue;
 
+			tenant = &eNB_ran_sh.tenants[i];
+
+			for (n = 0; n < tenant->rbs_req->n_rbs_dl; n++) {
+				id = pci_to_cc_id(
+						m_id,
+						tenant->rbs_req->rbs_dl[n]->phys_cell_id);
+				/* Invalid CC Id. */
+				if (id < 0)
+					continue;
+
+				cell = &eNB_ran_sh.cell[id];
+
+				/* Approximate estimation of RBs to be allocated in each SF. */
 				int req_rbs_per_t =
 				ceil(
-					(tenant->dl_ue_sched_ctrl_info->num_rbs_every_frame[cc_id] /
-					((frame_parms[cc_id]->N_RB_DL * 10) - NUM_RBS_CTRL_CH_DL)) *
-					ran_sh_sc_i.total_avail_rbs_dl[sf][cc_id]);
+					(tenant->rbs_req->rbs_dl[n]->num_rbs /
+					(frame_parms[id]->N_RB_DL * eNB_ran_sh.sched_window_dl))
+					* (cell->allocable_rbs_dl[sf]));
 
-				/* Looping over all the Resource Block Group. */
-				for (i = 0; i < N_RBG[cc_id]; i++) {
-					if (strcmp(ran_sh_sc_i.rballoc_dl[sf][i][cc_id],
-								RBG_T_RESERVED) != 0
+				/* Looping over all the Resource Blocks. */
+				for (i = 0;
+					i < frame_parms[id]->N_RB_DL;
+					i = i + min_rb_unit[id]) {
+
+					t = i;
+					while(t < i + min_rb_unit[id] &&
+												t < frame_parms[id]->N_RB_DL) {
+						if (cell->sfalloc_dl[sw_sf].rbs_alloc[t] != RB_RESERVED
 												&&
-						strcmp(ran_sh_sc_i.rballoc_dl[sf][i][cc_id],
-								RBG_NO_TENANT_SCHED) == 0
+							cell->sfalloc_dl[sw_sf].rbs_alloc[t] == RB_NOT_SCHED
 												&&
-						tenant->remaining_rbs_dl[cc_id] > 0 &&
-						tenant->alloc_rbs_dl_sf[cc_id] < req_rbs_per_t) {
+							tenant->remaining_rbs_dl[id] > 0 &&
+							tenant->alloc_rbs_dl_sf[id] < req_rbs_per_t) {
 
-						strcpy(ran_sh_sc_i.rballoc_dl[sf][i][cc_id],
-							   tenant->plmn_id);
+							cell->sfalloc_dl[sw_sf].rbs_alloc[t] =
+																tenant->plmn_id;
 
-						if ((i == N_RBG[cc_id] - 1) &&
-							((frame_parms[cc_id]->N_RB_DL == 25) ||
-								(frame_parms[cc_id]->N_RB_DL == 50))) {
-
-							tenant->remaining_rbs_dl[cc_id] -=
-														min_rb_unit[cc_id] + 1;
-							tenant->alloc_rbs_dl_sf[cc_id] +=
-														min_rb_unit[cc_id] - 1;
-						} else {
-							tenant->remaining_rbs_dl[cc_id] -=
-															min_rb_unit[cc_id];
-							tenant->alloc_rbs_dl_sf[cc_id] +=
-															min_rb_unit[cc_id];
+							tenant->remaining_rbs_dl[id]--;
+							tenant->alloc_rbs_dl_sf[id]++;
 						}
+						t++;
 					}
 				}
 			}
@@ -180,25 +215,27 @@ void ran_sharing_dlsch_sched (
 		pthread_spin_unlock(&tenants_info_lock);
 		/************************** UNLOCK ************************************/
 
-		/* Tenant scheduler implementation logic end. */
+/************* Tenant scheduler implementation logic end. *********************/
 	}
 
 	t = 0;
 	/* Identify the scheduled tenants for this subframe. */
 	for (cc_id = 0; cc_id < MAX_NUM_CCs; cc_id++) {
-		/* Looping over all the Resource Block Group. */
-		for (i = 0; i < N_RBG[cc_id]; i++) {
+		cell = &eNB_ran_sh.cell[cc_id];
+		/* Looping over all the Resource Blocks. */
+		for (i = 0; i < frame_parms[cc_id]->N_RB_DL; i++) {
 			int plmn_present = 0;
 			for (j = 0; j < MAX_TENANTS; j++) {
-				if (strcmp(scheduled_t[j],
-							ran_sh_sc_i.rballoc_dl[sf][i][cc_id]) == 0 &&
-					strcmp(scheduled_t[j], "") != 0) {
+				if (cell->sfalloc_dl[sw_sf].rbs_alloc[i] != RB_RESERVED &&
+					cell->sfalloc_dl[sw_sf].rbs_alloc[i] == scheduled_t[j]
+									&&
+					scheduled_t[j] != 0) {
 					plmn_present = 1;
 					break;
 				}
 			}
 			if (plmn_present == 0) {
-				strcpy(scheduled_t[t], ran_sh_sc_i.rballoc_dl[sf][i][cc_id]);
+				scheduled_t[t] = cell->sfalloc_dl[sw_sf].rbs_alloc[i];
 				t++;
 			}
 		}
@@ -206,7 +243,7 @@ void ran_sharing_dlsch_sched (
 
 	/* Call the UE scheduler and perform RBs allocation for the UEs of a tenant.
 	 */
-	tn = NULL;
+	// tn = NULL;
 
 	/**************************** LOCK ********************************/
 	pthread_spin_lock(&tenants_info_lock);
@@ -214,27 +251,32 @@ void ran_sharing_dlsch_sched (
 	/* Loop over all the scheduled tenants. */
 	for (j = 0; j < MAX_TENANTS; j++) {
 		/* If tenant is scheduled. */
-		if (strcmp(scheduled_t[j], "") != 0) {
+		if (scheduled_t[j] != 0) {
 
-			tn = tenant_info_get(scheduled_t[j]);
-
-			if (tn == NULL)
+			if (tenant_info_get(scheduled_t[j]) == NULL)
 				continue;
 
-			if (tn->ue_downlink_sched == NULL)
-				continue;
+			memcpy(&tn, tenant_info_get(scheduled_t[j]), sizeof(tenant_info));
+			if (tn.ue_downlink_sched == NULL)
+					continue;
 
-			memset(tn->ues_rnti, 0, sizeof(tn->ues_rnti));
+			for (i = 0; i < NUMBER_OF_UE_MAX; i++) {
+				tn.ues_rnti[i] = NOT_A_RNTI;
+			}
+
 			/* UE count. */
 			t = 0;
 			for (i = 0; i < MAX_TENANTS; i++) {
-				if (strcmp(scheduled_t[j], t_ues_id[i].plmn_id) == 0) {
+				if (scheduled_t[j] == t_ues_id[i].plmn_id) {
 					for (n = 0; n < NUMBER_OF_UE_MAX; n++) {
+						if (UE_list->active[t_ues_id[i].ue_ids[n]] != TRUE)
+							continue;
+
 						rnti = UE_RNTI(m_id, t_ues_id[i].ue_ids[n]);
 						if (rnti == NOT_A_RNTI)
 							continue;
 
-						tn->ues_rnti[t] = rnti;
+						tn.ues_rnti[t] = rnti;
 						t++;
 					}
 				}
@@ -247,7 +289,9 @@ void ran_sharing_dlsch_sched (
 			 * will result in PLMN ID in rrc eNB UE context to be "22293".
 			 */
 #if 0
-			memset(tenant_ues, 0, sizeof(tenant_ues));
+			for (n = 0; n < NUMBER_OF_UE_MAX; n++) {
+				tenant_ues[n] = NOT_A_RNTI;
+			}
 			/* UE count. */
 			t = 0;
 			/* Form list of UEs belonging to the tenant. */
@@ -264,8 +308,11 @@ void ran_sharing_dlsch_sched (
 				if (rrc_ue_ctxt == NULL)
 					continue;
 
-				if (strcmp(rrc_ue_ctxt->ue_context.plmn_id,
-							scheduled_t[j]) == 0) {
+				/* Tenant PLMN ID. Conversion to string. */
+				char t_plmn_id[MAX_PLMN_LEN_P_NULL] = {0};
+				plmn_conv_to_str(scheduled_t[j], t_plmn_id);
+
+				if (strcmp(rrc_ue_ctxt->ue_context.plmn_id, t_plmn_id) == 0) {
 					tenant_ues[t] = rnti;
 					t++;
 				}
@@ -273,37 +320,43 @@ void ran_sharing_dlsch_sched (
 #endif
 
 #if 0
-	printf("\n Before Subframe %d\n", sf);
+	printf("\n Before Subframe %d and SW Subframe %ld\n", sf, sw_sf);
 	for (cc_id = 0; cc_id < MAX_NUM_CCs; cc_id++) {
-		for (i = 0; i < N_RBG[cc_id]; i++) {
-			printf("%d\t", ran_sh_sc_i.rballoc_dl_ue[sf][i][cc_id]);
+		cell = &eNB_ran_sh.cell[cc_id];
+		for (i = 0; i < frame_parms[cc_id]->N_RB_DL; i++) {
+			printf("%d\t", cell->sfalloc_dl_ue[sw_sf].rbs_alloc[i]);
 		}
 	}
 #endif
 
-			tn->ue_downlink_sched(
+
+			/* Call the UE scheduler. */
+			tn.ue_downlink_sched(
 									scheduled_t[j],
 									m_id,
 									f,
 									sf,
+									sw_sf,
 									N_RBG,
 									&eNB_mac_inst[m_id],
 									mac_xface,
 									frame_parms,
-									ran_sh_sc_i.rballoc_dl[sf],
-									ran_sh_sc_i.rballoc_dl_ue,
 									min_rb_unit,
+									eNB_ran_sh.sched_window_dl,
+									eNB_ran_sh.cell,
 									// tenant_ues
-									tn->ues_rnti
+									tn.ues_rnti
 								 );
 		}
 	}
 
+
 #if 0
-	printf("\n After Subframe %d\n", sf);
+	printf("\n After Subframe %d and SW Subframe %ld\n", sf, sw_sf);
 	for (cc_id = 0; cc_id < MAX_NUM_CCs; cc_id++) {
-		for (i = 0; i < N_RBG[cc_id]; i++) {
-			printf("%d\t", ran_sh_sc_i.rballoc_dl_ue[sf][i][cc_id]);
+		cell = &eNB_ran_sh.cell[cc_id];
+		for (i = 0; i < frame_parms[cc_id]->N_RB_DL; i++) {
+			printf("%d\t", cell->sfalloc_dl_ue[sw_sf].rbs_alloc[i]);
 		}
 	}
 #endif
@@ -321,13 +374,16 @@ void ran_sharing_dlsch_sched (
 									m_id,
 									f,
 									sf,
+									sw_sf,
 									N_RBG,
-									frame_parms,
 									MIMO_mode_indicator,
-									ran_sh_sc_i.rballoc_dl[sf],
-									ran_sh_sc_i.rballoc_dl_ue[sf],
-									min_rb_unit
+									mbsfn_flag,
+									frame_parms,
+									min_rb_unit,
+									eNB_ran_sh.sched_window_dl,
+									eNB_ran_sh.cell
 								 );
+
 }
 
 // void ran_sharing_dlsch_sort_UEs (
@@ -359,20 +415,25 @@ void ran_sharing_dlsch_sched_alloc (
 	frame_t f,
 	/* Current subframe number. */
 	sub_frame_t sf,
+	/* Subframe number maintained for scheduling window. */
+	uint64_t sw_sf,
 	/* Number of Resource Block Groups (RBG) in each CCs. */
 	int N_RBG[MAX_NUM_CCs],
-	/* LTE DL frame parameters. */
-	LTE_DL_FRAME_PARMS *frame_parms[MAX_NUM_CCs],
 	/* MIMO indicator. */
 	unsigned char MIMO_mode_indicator[MAX_NUM_CCs][N_RBG_MAX],
-	/* RB allocation for all tenants in a subframe. */
-	char rballoc_t[N_RBG_MAX][MAX_NUM_CCs][MAX_PLMN_LEN_P_NULL],
-	/* RB allocation for UEs of the tenant in a particular subframe. */
-	rnti_t rballoc_ue[N_RBG_MAX][MAX_NUM_CCs],
+	/* Multicast Broadcase Single Frequency Network (MBSFN) subframe indicator.
+	 */
+	int *mbsfn_flag,
+	/* LTE DL frame parameters. */
+	LTE_DL_FRAME_PARMS *frame_parms[MAX_NUM_CCs],
 	/* Minimum number of RBs to be allocated to a UE in each CCs. */
-	int min_rb_unit[MAX_NUM_CCs]) {
+	int min_rb_unit[MAX_NUM_CCs],
+	/* Downlink Scheduling Window. (in number of Subframes) */
+	uint64_t sched_window_dl,
+	/* RAN sharing information per cell. */
+	cell_ran_sharing cell[MAX_NUM_CCs]) {
 
-	int i, cc_id, ue_id, transmission_mode;
+	int i, cc_id, ue_id, transmission_mode, RBGsize;
 #if 0
 	/* UE RRC eNB context. */
 	struct rrc_eNB_ue_context_s *rrc_ue_ctxt;
@@ -380,21 +441,27 @@ void ran_sharing_dlsch_sched_alloc (
 	/* RNTI value of UE. */
 	rnti_t rnti;
 	/* Tenant PLMN ID. */
-	char t_plmn_id[MAX_PLMN_LEN_P_NULL];
+	uint32_t t_plmn_id;
+
+	// printf("\n Entering ALLOC \n");
 
 	UE_list_t *UE_list = &eNB_mac_inst[m_id].UE_list;
 	UE_sched_ctrl *ue_sched_ctl;
 	/* Loop over active component carriers. */
 	for (cc_id = 0; cc_id < MAX_NUM_CCs; cc_id++) {
+		if (mbsfn_flag[cc_id] > 0)
+			continue;
+		RBGsize = frame_parms[cc_id]->N_RBGS;
 		/* Loop over RBGs. */
-		for (i = 0; i < N_RBG_MAX; i++) {
-
-			strcpy(t_plmn_id, rballoc_t[i][cc_id]);
-			rnti = rballoc_ue[i][cc_id];
+		for (i = 0; i < N_RBG[cc_id]; i++) {
+			/* Since RAT type 0 is inly supported. UE RNTI present at start
+			 * of Resource Block Group is scheduled.
+			*/
+			t_plmn_id = cell[cc_id].sfalloc_dl[sw_sf].rbs_alloc[i * RBGsize];
+			rnti = cell[cc_id].sfalloc_dl_ue[sw_sf].rbs_alloc[i * RBGsize];
 			/* Reserved RBG or no UE/Tenant scheduled. */
-			if (strcmp(t_plmn_id, RBG_T_RESERVED) == 0 ||
-				rnti == RBG_NO_UE_SCHED ||
-				strcmp(t_plmn_id, RBG_NO_TENANT_SCHED) == 0)
+			if (t_plmn_id == RB_RESERVED || rnti == RB_NOT_SCHED ||
+													t_plmn_id == RB_NOT_SCHED)
 				continue;
 
 			ue_id = find_UE_id(m_id, rnti);
@@ -415,7 +482,9 @@ void ran_sharing_dlsch_sched_alloc (
 				continue;
 
 			/* UE does not belong to this tenant. */
-			if (strcmp(rrc_ue_ctxt->ue_context.plmn_id, t_plmn_id) != 0)
+			char t_plmn_str[MAX_PLMN_LEN_P_NULL] = {0};
+			plmn_conv_to_str(t_plmn_id, t_plmn_str);
+			if (strcmp(rrc_ue_ctxt->ue_context.plmn_id, t_plmn_str) != 0)
 				continue;
 #endif
 
@@ -443,6 +512,8 @@ void ran_sharing_dlsch_sched_alloc (
 			}
 		}
 	}
+
+	// printf("\n Exiting ALLOC \n");
 }
 
 void ran_sharing_dlsch_sched_reset (
@@ -452,19 +523,25 @@ void ran_sharing_dlsch_sched_reset (
 	frame_t f,
 	/* Current subframe number. */
 	sub_frame_t sf,
+	/* Subframe number maintained for scheduling window. */
+	uint64_t sw_sf,
 	/* Number of Resource Block Groups (RBG) in each CCs. */
 	int N_RBG[MAX_NUM_CCs],
 	/* MIMO indicator. */
 	unsigned char MIMO_mode_indicator[MAX_NUM_CCs][N_RBG_MAX],
 	/* Multicast Broadcase Single Frequency Network (MBSFN) subframe indicator.
 	 */
-	int * mbsfn_flag,
+	int *mbsfn_flag,
 	/* LTE DL frame parameters. */
 	LTE_DL_FRAME_PARMS *frame_parms[MAX_NUM_CCs],
 	/* Minimum number of RBs to be allocated to a UE in each CCs. */
-	int min_rb_unit[MAX_NUM_CCs]) {
+	int min_rb_unit[MAX_NUM_CCs],
+	/* Downlink Scheduling Window. (in number of Subframes) */
+	uint64_t sched_window_dl,
+	/* RAN sharing information per cell. */
+	cell_ran_sharing cell[MAX_NUM_CCs]) {
 
-	int i, j, cc_id, ue_id, RBGsize;
+	int i, cc_id, ue_id, RBGsize, j, vrb_flag, rbs;
 	uint8_t *vrb_map;
 	UE_list_t *UE_list = &eNB_mac_inst[m_id].UE_list;
 	UE_sched_ctrl *ue_sched_ctl;
@@ -475,95 +552,110 @@ void ran_sharing_dlsch_sched_reset (
 	/* Initializing reserved RBGs according to VRB map. */
 	for (cc_id = 0; cc_id < MAX_NUM_CCs; cc_id++) {
 
-		#ifdef SF05_LIMIT
-			int sf05_upper = -1, sf05_lower = -1;
+	#ifdef SF05_LIMIT
+		int sf05_upper = -1, sf05_lower = -1;
 
-			switch (N_RBG[cc_id]) {
-				case 6:
-					sf05_lower = 0;
-					sf05_upper = 5;
-					break;
-				case 8:
-					sf05_lower = 2;
-					sf05_upper = 5;
-					break;
-				case 13:
-					sf05_lower = 4;
-					sf05_upper = 7;
-					break;
-				case 17:
-					sf05_lower = 7;
-					sf05_upper = 9;
-					break;
-				case 25:
-					sf05_lower = 11;
-					sf05_upper = 13;
-					break;
-			}
-		#endif
+		switch (N_RBG[cc_id]) {
+			case 6:
+				sf05_lower = 0;
+				sf05_upper = 5;
+				break;
+			case 8:
+				sf05_lower = 2;
+				sf05_upper = 5;
+				break;
+			case 13:
+				sf05_lower = 4;
+				sf05_upper = 7;
+				break;
+			case 17:
+				sf05_lower = 7;
+				sf05_upper = 9;
+				break;
+			case 25:
+				sf05_lower = 11;
+				sf05_upper = 13;
+				break;
+		}
+	#endif
 
-		RBGsize =
-				PHY_vars_eNB_g[m_id][cc_id]->frame_parms.N_RB_DL / N_RBG[cc_id];
+		RBGsize = frame_parms[cc_id]->N_RBGS;
 		vrb_map = eNB_mac_inst[m_id].common_channels[cc_id].vrb_map;
 
-		ran_sh_sc_i.total_avail_rbs_dl[sf][cc_id] = frame_parms[cc_id]->N_RB_DL;
-		/* Looping over all the Resource Block Group. */
+		cell[cc_id].allocable_rbs_dl[sf] = frame_parms[cc_id]->N_RB_DL;
+		/* Looping over all the Resource Block Groups. */
 		for (i = 0; i < N_RBG[cc_id]; i++) {
+			vrb_flag = 0;
+			rbs = 0;
 
-			// strcpy(ran_sh_sc_i.rballoc_dl[sf][i][cc_id],
-			// 		RBG_NO_TENANT_SCHED);
-			// ran_sh_sc_i.rballoc_dl_ue[sf][i][cc_id] = RBG_NO_UE_SCHED;
+			/* SI-RNTI, RA-RNTI and P-RNTI allocations. */
+			for (j = 0; j < RBGsize; j++) {
+				if (vrb_map[j + (i * RBGsize)] != 0)  {
+					// printf("\nFrame %d, subframe %d : vrb %d allocated\n", f, sf, j + (i * RBGsize));
+					vrb_flag = 1;
+					break;
+				}
+			}
+
+			/* Looping over each RB. */
+			for (j = i * RBGsize;
+				j < frame_parms[cc_id]->N_RB_DL && rbs < RBGsize;
+				j++) {
+
+				// if (cell[cc_id].sfalloc_dl[sw_sf].rbs_alloc[j] ==
+				// 												RB_RESERVED) {
+				// 	cell[cc_id].sfalloc_dl[sw_sf].rbs_alloc[j] = RB_NOT_SCHED;
+				// 	cell[cc_id].sfalloc_dl_ue[sw_sf].rbs_alloc[j] =
+				// 												RB_NOT_SCHED;
+				// }
 
 			#ifdef SF05_LIMIT
 				/* For avoiding 6+ PRBs around DC in subframe 0-5. */
 				if ((sf == 0 || sf == 5) &&
 									(i >= sf05_lower && i <= sf05_upper)) {
-					strcpy(ran_sh_sc_i.rballoc_dl[sf][i][cc_id],
-							RBG_T_RESERVED);
-					ran_sh_sc_i.rballoc_dl_ue[sf][i][cc_id] = RBG_NO_UE_SCHED;
+					cell[cc_id].sfalloc_dl[sw_sf].rbs_alloc[j] = RB_RESERVED;
+					cell[cc_id].sfalloc_dl_ue[sw_sf].rbs_alloc[j] =
+																	RB_NOT_SCHED;
 				}
 			#endif
-			/* SI-RNTI, RA-RNTI and P-RNTI allocations. */
-			for (j = 0; j < RBGsize; j++) {
-				if (vrb_map[j + (i * RBGsize)] != 0)  {
-					strcpy(ran_sh_sc_i.rballoc_dl[sf][i][cc_id],
-							RBG_T_RESERVED);
-					ran_sh_sc_i.rballoc_dl_ue[sf][i][cc_id] = RBG_NO_UE_SCHED;
-					break;
-				}
-			}
 
-			if (strcmp(ran_sh_sc_i.rballoc_dl[sf][i][cc_id],
-						RBG_T_RESERVED) == 0) {
-				if ((i == N_RBG[cc_id] - 1) &&
-					((frame_parms[cc_id]->N_RB_DL == 25) ||
-						(frame_parms[cc_id]->N_RB_DL == 50))) {
-					ran_sh_sc_i.total_avail_rbs_dl[sf][cc_id] -=
-														min_rb_unit[cc_id] - 1;
-				} else {
-					ran_sh_sc_i.total_avail_rbs_dl[sf][cc_id] -=
-															min_rb_unit[cc_id];
+				/* SI-RNTI, RA-RNTI and P-RNTI allocations. */
+				if (vrb_flag == 1)  {
+					cell[cc_id].sfalloc_dl[sw_sf].rbs_alloc[j] = RB_RESERVED;
+					cell[cc_id].sfalloc_dl_ue[sw_sf].rbs_alloc[j] =
+																RB_NOT_SCHED;
 				}
+
+				if (cell[cc_id].sfalloc_dl[sw_sf].rbs_alloc[j] ==
+																RB_RESERVED) {
+					cell[cc_id].allocable_rbs_dl[sf] -= 1;
+				}
+
+				++rbs;
 			}
 		}
 	}
 
 	for (cc_id = 0; cc_id < MAX_NUM_CCs; cc_id++) {
-		if (mbsfn_flag[cc_id] > 0)
+
+		if (mbsfn_flag[cc_id] > 0) {
 			continue;
+		}
 		/* Reset RB allocations for all UEs. */
 		for (ue_id = UE_list->head; ue_id >= 0; ue_id = UE_list->next[ue_id]) {
 
-			if (UE_list->active[ue_id] != TRUE)
+			if (UE_list->active[ue_id] != TRUE) {
 				continue;
+			}
 
 			ue_sched_ctl = &UE_list->UE_sched_ctrl[ue_id];
 			rnti = UE_RNTI(m_id, ue_id);
 
 			eNB_UE_stats = mac_xface->get_eNB_UE_stats(m_id, cc_id, rnti);
 
-			if (eNB_UE_stats == NULL)
+			if (eNB_UE_stats == NULL) {
 				continue;
+			}
 
 			/* Initialize harq_pid and round. */
 			mac_xface->get_ue_active_harq_pid(m_id, cc_id, rnti, f, sf,
@@ -625,72 +717,155 @@ void ran_sharing_dlsch_sched_reset (
 			ue_sched_ctl->pre_nb_available_rbs[cc_id] = 0;
 			ue_sched_ctl->dl_pow_off[cc_id] = 2;
 
-			for (i = 0; i < N_RBG[cc_id]; i++) {
-				ue_sched_ctl->rballoc_sub_UE[cc_id][i] = 0;
-				MIMO_mode_indicator[cc_id][i] = 2;
+			for (j = 0; j < N_RBG[cc_id]; j++) {
+				ue_sched_ctl->rballoc_sub_UE[cc_id][j] = 0;
+				MIMO_mode_indicator[cc_id][j] = 2;
 			}
 		}
 	}
 
 #if 0
-	printf("\n Subframe %d\n", sf);
+	printf("\n Subframe %d and SW Subframe %ld\n", sf, sw_sf);
 	for (cc_id = 0; cc_id < MAX_NUM_CCs; cc_id++) {
-		for (i = 0; i < N_RBG[cc_id]; i++) {
-			printf("%s\t", ran_sh_sc_i.rballoc_dl[sf][i][cc_id]);
+		for (i = 0; i < frame_parms[cc_id]->N_RB_DL; i++) {
+			printf("%lx\t", cell[cc_id].sfalloc_dl[sw_sf].rbs_alloc[i]);
 		}
-		printf("total aval rbs %d\n", ran_sh_sc_i.total_avail_rbs_dl[sf][cc_id]);
+		printf("total aval rbs %d\n", cell[cc_id].allocable_rbs_dl[sf]);
 	}
 #endif
+
+	// printf("\n Exiting RESET \n");
+}
+
+int pci_to_cc_id (
+	/* Module identifier. */
+	module_id_t m_id,
+	/* Physical Cell Id. */
+	uint32_t pci) {
+
+	int cc_id;
+	for (cc_id = 0; cc_id < MAX_NUM_CCs; cc_id++) {
+		LTE_DL_FRAME_PARMS *fp = mac_xface->get_lte_frame_parms(m_id, cc_id);
+		if (fp->Nid_cell == pci) {
+			return cc_id;
+		}
+	}
+	return -1;
+}
+
+void plmn_conv_to_str (
+	/* PLMN Id of the tenant. */
+	uint32_t plmn_id,
+	/* String output of the conversion. */
+	char plmn_str[MAX_PLMN_LEN_P_NULL]) {
+
+	/* Tenant PLMN ID. Conversion to string. */
+	plmn_str = "";
+	sprintf(plmn_str, "%x", plmn_id);
+
+	for (int i = 0; i < strlen(plmn_str) - 1; i++) {
+		if (plmn_str[i] == 'F' || plmn_str[i] == 'f')
+			plmn_str[i] = '0';
+	}
+
+	if (plmn_str[strlen(plmn_str) - 1] == 'F' ||
+		plmn_str[strlen(plmn_str) - 1] == 'f') {
+		plmn_str[strlen(plmn_str) - 1] = '\0';
+	}
+}
+
+uint32_t plmn_conv_to_uint (
+	/* PLMN Id of the tenant. */
+	char plmn_id[MAX_PLMN_LEN_P_NULL]) {
+
+	char plmn_tmp[MAX_PLMN_LEN_P_NULL] = {0};
+	strcpy(plmn_tmp, plmn_id);
+
+	if (strlen(plmn_tmp) < 5)
+		return -1;
+
+	if (strlen(plmn_tmp) == 5) {
+		plmn_tmp[MAX_PLMN_LEN_P_NULL - 2] = 'F';
+		plmn_tmp[MAX_PLMN_LEN_P_NULL - 1] = '\0';
+	}
+
+	for (int i = 0; i < strlen(plmn_tmp); i++) {
+		/* Replace inital zeros only with 'F'. */
+		if (plmn_tmp[i] == '0')
+			plmn_tmp[i] = 'F';
+		else
+			break;
+	}
+	uintmax_t plmn_num = strtoumax(plmn_tmp, NULL, 16);
+
+	return (uint32_t) plmn_num;
 }
 
 int ran_sharing_sched_init (
 	/* Module identifier. */
 	module_id_t m_id) {
 
-	/* Initialize RB tree holding tenant information. */
-	RB_INIT(&ran_sh_sc_i.tenant_info_head);
+	int cc_id, rb, sf, i, t;
 
-	struct tenant_info *t1, *t2;
+	eNB_ran_sh.tenants[0].plmn_id = 0x22293F;
+	eNB_ran_sh.tenants[0].ue_downlink_sched = assign_rbs_RR_DL;
 
-	t1 = calloc(1, sizeof(*t1));
-	t2 = calloc(1, sizeof(*t2));
-
-	strcpy(t1->plmn_id, "22293");
-	t1->ue_downlink_sched = assign_rbs_RR_DL;
-
-	strcpy(t2->plmn_id, "20893");
-	t2->ue_downlink_sched = assign_rbs_RR_DL;
-
-	tenant_info_add(t1);
-	tenant_info_add(t2);
+	eNB_ran_sh.tenants[1].plmn_id = 0x20893F;
+	eNB_ran_sh.tenants[1].ue_downlink_sched = assign_rbs_RR_DL;
 
 	/* Static resource allocation purpose. */
-	ran_sh_sc_i.tenant_sched_dl = NULL;
+	eNB_ran_sh.tenant_sched_dl = NULL;
 
-	/* Clear garbage values. */
-	memset(ran_sh_sc_i.rballoc_dl, 0, sizeof(ran_sh_sc_i.rballoc_dl));
-	memset(ran_sh_sc_i.rballoc_dl_ue, 0, sizeof(ran_sh_sc_i.rballoc_dl_ue));
-	memset(
-		ran_sh_sc_i.total_avail_rbs_dl,
-		0,
-		sizeof(ran_sh_sc_i.total_avail_rbs_dl));
+	/* Setting Downlink and Uplink scheduling window.
+	 * Currently implementation considers window over 1 frame = 10 Subframes.
+	 */
+	eNB_ran_sh.sched_window_dl = 10;
+	eNB_ran_sh.sched_window_ul = 10;
 
 	// SIB1_update_tenant(m_id);
 
-	char rballoc_dl[NUM_SF_IN_FRAME][N_RBG_MAX][MAX_NUM_CCs][MAX_PLMN_LEN_P_NULL] = {
-		{ {"0"}, {"0"}, {"0"}, {"0"}, {"-1"}, {"-1"}, {"-1"}, {"-1"}, {"22293"}, {"22293"}, {"20893"}, {"20893"}, {"20893"} },
-		{ {"22293"}, {"22293"}, {"22293"}, {"22293"}, {"22293"}, {"22293"}, {"22293"}, {"22293"}, {"22293"}, {"22293"}, {"20893"}, {"20893"}, {"20893"} },
-		{ {"22293"}, {"22293"}, {"22293"}, {"22293"}, {"22293"}, {"22293"}, {"22293"}, {"22293"}, {"22293"}, {"22293"}, {"20893"}, {"20893"}, {"20893"} },
-		{ {"22293"}, {"22293"}, {"22293"}, {"22293"}, {"22293"}, {"22293"}, {"22293"}, {"22293"}, {"22293"}, {"22293"}, {"20893"}, {"20893"}, {"20893"} },
-		{ {"22293"}, {"22293"}, {"22293"}, {"22293"}, {"22293"}, {"22293"}, {"22293"}, {"22293"}, {"22293"}, {"22293"}, {"20893"}, {"20893"}, {"20893"} },
-		{ {"-1"}, {"-1"}, {"-1"}, {"-1"}, {"-1"}, {"-1"}, {"-1"}, {"-1"}, {"22293"}, {"22293"}, {"20893"}, {"-1"}, {"-1"} },
-		{ {"22293"}, {"22293"}, {"22293"}, {"22293"}, {"22293"}, {"22293"}, {"22293"}, {"22293"}, {"22293"}, {"22293"}, {"20893"}, {"20893"}, {"20893"} },
-		{ {"22293"}, {"22293"}, {"22293"}, {"22293"}, {"22293"}, {"22293"}, {"22293"}, {"22293"}, {"22293"}, {"22293"}, {"20893"}, {"20893"}, {"20893"} },
-		{ {"22293"}, {"22293"}, {"22293"}, {"22293"}, {"22293"}, {"22293"}, {"22293"}, {"22293"}, {"22293"}, {"22293"}, {"20893"}, {"20893"}, {"20893"} },
-		{ {"22293"}, {"22293"}, {"22293"}, {"22293"}, {"22293"}, {"22293"}, {"22293"}, {"22293"}, {"22293"}, {"22293"}, {"20893"}, {"20893"}, {"20893"} }
-	};
+	for (cc_id = 0; cc_id < MAX_NUM_CCs; cc_id++) {
 
-	// char rballoc_dl[NUM_SF_IN_FRAME][N_RBG_MAX][MAX_NUM_CCs][MAX_PLMN_LEN_P_NULL] = {
+		LTE_DL_FRAME_PARMS *fp = mac_xface->get_lte_frame_parms(m_id, cc_id);
+
+		eNB_ran_sh.cell[cc_id].phys_cell_id = fp->Nid_cell;
+
+		cell_ran_sharing *cell = &eNB_ran_sh.cell[cc_id];
+
+		cell->sfalloc_dl = malloc(eNB_ran_sh.sched_window_dl *
+												sizeof(t_RBs_alloc_over_sf));
+		cell->sfalloc_dl_ue = malloc(eNB_ran_sh.sched_window_dl *
+												sizeof(UE_RBs_alloc_over_sf));
+
+		for (sf = 0; sf < eNB_ran_sh.sched_window_dl; sf++) {
+
+			cell->sfalloc_dl[sf].n_rbs_alloc = fp->N_RB_DL;
+			cell->sfalloc_dl[sf].rbs_alloc =
+				calloc(cell->sfalloc_dl[sf].n_rbs_alloc, sizeof(int));
+
+			cell->sfalloc_dl_ue[sf].n_rbs_alloc = fp->N_RB_DL;
+			cell->sfalloc_dl_ue[sf].rbs_alloc =
+				calloc(cell->sfalloc_dl_ue[sf].n_rbs_alloc, sizeof(rnti_t));
+
+
+			printf("\n SW %d\n", sf);
+
+			for (rb = 0; rb < cell->sfalloc_dl[sf].n_rbs_alloc; rb++) {
+				if (rb <= 4) {
+					cell->sfalloc_dl[sf].rbs_alloc[rb]= 0x22293F;
+				}
+				else if (rb >= 20) {
+					cell->sfalloc_dl[sf].rbs_alloc[rb]= 0x20893F;
+				}
+
+#if 1
+				printf("%lx\t", cell->sfalloc_dl[sf].rbs_alloc[rb]);
+#endif
+			}
+		}
+	}
+
+	// char sfalloc_dl[NUM_SF_IN_FRAME][N_RBG_MAX][MAX_NUM_CCs][MAX_PLMN_LEN_P_NULL] = {
 	// 	{ {"0"}, {"0"}, {"0"}, {"0"}, {"-1"}, {"-1"}, {"-1"}, {"-1"}, {"22293"}, {"20893"}, {"20893"}, {"22293"}, {"20893"} },
 	// 	{ {"22293"}, {"22293"}, {"20893"}, {"22293"}, {"22293"}, {"20893"}, {"22293"}, {"22293"}, {"22293"}, {"22293"}, {"22293"}, {"20893"}, {"22293"} },
 	// 	{ {"22293"}, {"22293"}, {"20893"}, {"22293"}, {"22293"}, {"20893"}, {"22293"}, {"22293"}, {"22293"}, {"22293"}, {"22293"}, {"20893"}, {"22293"} },
@@ -703,7 +878,7 @@ int ran_sharing_sched_init (
 	// 	{ {"22293"}, {"22293"}, {"20893"}, {"22293"}, {"22293"}, {"20893"}, {"22293"}, {"22293"}, {"22293"}, {"22293"}, {"22293"}, {"20893"}, {"22293"} }
 	// };
 
-	// char rballoc_dl[NUM_SF_IN_FRAME][N_RBG_MAX][MAX_NUM_CCs][MAX_PLMN_LEN_P_NULL] = {
+	// char sfalloc_dl[NUM_SF_IN_FRAME][N_RBG_MAX][MAX_NUM_CCs][MAX_PLMN_LEN_P_NULL] = {
 	// 	{ {"0"}, {"0"}, {"0"}, {"0"}, {"-1"}, {"-1"}, {"-1"}, {"-1"}, {"22293"}, {"20893"}, {"22293"}, {"20893"}, {"22293"} },
 	// 	{ {"22293"}, {"20893"}, {"22293"}, {"20893"}, {"22293"}, {"20893"}, {"22293"}, {"20893"}, {"22293"}, {"20893"}, {"22293"}, {"20893"}, {"22293"} },
 	// 	{ {"22293"}, {"20893"}, {"22293"}, {"20893"}, {"22293"}, {"20893"}, {"22293"}, {"20893"}, {"22293"}, {"20893"}, {"22293"}, {"20893"}, {"22293"} },
@@ -717,7 +892,7 @@ int ran_sharing_sched_init (
 	// };
 
 	/* Smiley */
-	// char rballoc_dl[NUM_SF_IN_FRAME][N_RBG_MAX][MAX_NUM_CCs][MAX_PLMN_LEN_P_NULL] = {
+	// char sfalloc_dl[NUM_SF_IN_FRAME][N_RBG_MAX][MAX_NUM_CCs][MAX_PLMN_LEN_P_NULL] = {
 	// 	{     {"0"},     {"0"},     {"0"},     {"0"},    {"-1"},    {"-1"},    {"-1"},    {"-1"}, {"20893"}, {"20893"}, {"20893"}, {"20893"}, {"20893"} },
 	// 	{ {"20893"}, {"20893"}, {"20893"}, {"20893"}, {"20893"}, {"20893"}, {"20893"}, {"20893"}, {"20893"}, {"20893"}, {"20893"}, {"20893"}, {"20893"} },
 	// 	{ {"20893"}, {"20893"}, {"20893"}, {"20893"}, {"20893"}, {"20893"}, {"20893"}, {"20893"}, {"20893"}, {"22293"}, {"20893"}, {"22293"}, {"20893"} },
@@ -730,19 +905,19 @@ int ran_sharing_sched_init (
 	// 	{ {"20893"}, {"20893"}, {"20893"}, {"20893"}, {"20893"}, {"20893"}, {"20893"}, {"20893"}, {"20893"}, {"20893"}, {"22293"}, {"20893"}, {"20893"} }
 	// };
 
-	memcpy(ran_sh_sc_i.rballoc_dl, rballoc_dl, sizeof(rballoc_dl));
+	for (t = 0; t < MAX_TENANTS; t++) {
+		t_ues_id[t].plmn_id = 0;
+		for (i = 0; i < NUMBER_OF_UE_MAX; i++) {
+			t_ues_id[t].ue_ids[i] = -1;
+		}
+	}
 
-	memset(t_ues_id, 0, sizeof(t_ues_id));
-
-	memset(t_ues_id[0].ue_ids, -1, sizeof(t_ues_id[0].ue_ids));
-	memset(t_ues_id[1].ue_ids, -1, sizeof(t_ues_id[1].ue_ids));
-
-	strcpy(t_ues_id[0].plmn_id, "22293");
+	t_ues_id[0].plmn_id = 0x22293F;
 	t_ues_id[0].ue_ids[0] = 0;
 	t_ues_id[0].ue_ids[1] = 2;
 	t_ues_id[0].ue_ids[2] = 4;
 
-	strcpy(t_ues_id[1].plmn_id, "20893");
+	t_ues_id[1].plmn_id = 0x20893F;
 	t_ues_id[1].ue_ids[0] = 1;
 	t_ues_id[1].ue_ids[1] = 3;
 	t_ues_id[1].ue_ids[2] = 5;
