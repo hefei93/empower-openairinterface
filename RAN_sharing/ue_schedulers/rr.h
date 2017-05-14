@@ -21,26 +21,24 @@
 
 #include <stdint.h>
 #include <stdio.h>
+#include <inttypes.h>
 
 /* Importing global variables and variable types defined in OAI */
-#include <platform_types.h>
-#include <LAYER2/MAC/defs.h>
-#include <openair2/PHY_INTERFACE/defs.h>
-#include <LAYER2/MAC/proto.h>
-
-#include "ran_sharing_sched.h"
+#include "ran_sharing_defs.h"
 
 /* Assigns the available RBs to UEs in Round-Robin mechanism in Downlink.
 */
 void assign_rbs_RR_DL (
 	/* PLMN ID of the tenant. */
-	char plmn_id[MAX_PLMN_LEN_P_NULL],
+	uint32_t plmn_id,
 	/* Module identifier. */
 	module_id_t m_id,
 	/* Current frame number. */
 	frame_t f,
 	/* Current subframe number. */
 	sub_frame_t sf,
+	/* Subframe number maintained for scheduling window. */
+	uint64_t sw_sf,
 	/* Number of Resource Block Groups (RBG) in each CCs. */
 	int N_RBG[MAX_NUM_CCs],
 	/* eNB MAC instance. */
@@ -49,12 +47,12 @@ void assign_rbs_RR_DL (
 	MAC_xface *mac_xface,
 	/* LTE DL frame parameters. */
 	LTE_DL_FRAME_PARMS *frame_parms[MAX_NUM_CCs],
-	/* RB allocation for tenants in a subframe. */
-	char rballoc_t[N_RBG_MAX][MAX_NUM_CCs][MAX_PLMN_LEN_P_NULL],
-	/* RB allocation for UEs of all tenants in a particular frame. */
-	rnti_t rballoc_ue[NUM_SF_IN_FRAME][N_RBG_MAX][MAX_NUM_CCs],
 	/* Minimum number of resource blocks that can be allocated to a UE. */
 	int min_rb_unit[MAX_NUM_CCs],
+	/* Downlink Scheduling Window. (in number of Subframes) */
+	uint64_t sched_window_dl,
+	/* RAN sharing information per cell. */
+	cell_ran_sharing cell[MAX_NUM_CCs],
 	/* UEs RNTI values belonging to a tenant. */
 	rnti_t tenant_ues[NUMBER_OF_UE_MAX]);
 
