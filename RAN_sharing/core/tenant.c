@@ -19,111 +19,164 @@
 
 #include "tenant.h"
 
-/* Generate the tree. */
-RB_GENERATE(
-	tenants_info_tree,
-	tenant_info,
-	tenant_i,
-	tenants_info_comp);
+tenant_info * tenant_info_get (
+	/* PLMN Id of the tenant. */
+	uint32_t plmn_id) {
 
-int tenants_info_comp (struct tenant_info *t1, struct tenant_info *t2) {
-
-	return strcmp(t1->plmn_id, t2->plmn_id);
-}
-
-struct tenant_info * tenant_info_get (char plmn_id[MAX_PLMN_LEN_P_NULL]) {
-
-	struct tenant_info *t = NULL;
+	if (plmn_id == 0)
+		return NULL;
 
 	/* Compare with each of the tenants stored. */
-	RB_FOREACH(
-				t,
-				tenants_info_tree,
-				&ran_sh_sc_i.tenant_info_head) {
-		if (strcmp(t->plmn_id, plmn_id) == 0) {
-			return t;
+	for (int i = 0; i < MAX_TENANTS; i++) {
+		if (eNB_ran_sh.tenants[i].plmn_id != 0 &&
+			eNB_ran_sh.tenants[i].plmn_id == plmn_id) {
+			return &eNB_ran_sh.tenants[i];
 		}
 	}
 	return NULL;
 }
 
-int tenant_info_rem (struct tenant_info *t) {
+int tenant_info_rem (
+	/* Tenant to be removed. */
+	uint32_t plmn_id) {
+
+	int flag = 0;
+
+	if (plmn_id == 0)
+		return -1;
+
+	for (int i = 0; i < MAX_TENANTS; i++) {
+		if (eNB_ran_sh.tenants[i].plmn_id != 0 &&
+			plmn_id == eNB_ran_sh.tenants[i].plmn_id) {
+
+			tenant_rbs_req__free_unpacked(eNB_ran_sh.tenants[i].rbs_req, 0);
+			ue_sched_select__free_unpacked(eNB_ran_sh.tenants[i].ue_sched, 0);
+			eNB_ran_sh.tenants[i].plmn_id = 0;
+			for (int j = 0; j < NUMBER_OF_UE_MAX; j++) {
+				eNB_ran_sh.tenants[i].ues_rnti[j] = NOT_A_RNTI;
+			}
+			eNB_ran_sh.tenants[i].ue_downlink_sched = NULL;
+			for (int j = 0; j < MAX_NUM_CCs; j++) {
+				eNB_ran_sh.tenants[i].remaining_rbs_dl[j] = 0;
+				eNB_ran_sh.tenants[i].alloc_rbs_dl_sf[j] = 0;
+				eNB_ran_sh.tenants[i].remaining_rbs_ul[j] = 0;
+				eNB_ran_sh.tenants[i].alloc_rbs_ul_sf[j] = 0;
+			}
+			flag = 1;
+			break;
+		}
+	}
+
+	/* Tenant not present. */
+	if (flag == 0) {
+		return -1;
+	}
+	return 0;
+}
+
+int tenant_info_add (
+	/* PLMN ID of the tenant to be added. */
+	uint32_t plmn_id) {
+
+	if (plmn_id == 0)
+		return -1;
+
+	/* Insert the tenant into the list of tenants. */
+	for (int i = 0; i < MAX_TENANTS; i++) {
+		if (eNB_ran_sh.tenants[i].plmn_id == 0) {
+			eNB_ran_sh.tenants[i].plmn_id = plmn_id;
+			break;
+		}
+	}
+	return 0;
+}
+
+int tenant_info_update (
+	/* PLMN ID of the tenant. */
+	uint32_t plmn_id,
+	/* Tenant RBs request for DL and UL from the controller. */
+	TenantRbsReq *rbs_req,
+	/* DL and UL UE scheduler selected by the tenant. */
+	UeSchedSelect *ue_sched) {
+
+	tenant_info *t = tenant_info_get(plmn_id);
+	uint32_t bsize = 0;
+	uint8_t *buffer = NULL;
 
 	if (t == NULL)
 		return -1;
 
-	RB_REMOVE(tenants_info_tree, &ran_sh_sc_i.tenant_info_head, t);
-	/* Free the tenant stored. */
-	if (t) {
-		ue_scheduler__free_unpacked(t->dl_ue_sched_ctrl_info, 0);
-		ue_scheduler__free_unpacked(t->ul_ue_sched_ctrl_info, 0);
-		free(t);
-	} else {
-		return -1;
+	if (t->rbs_req != NULL) {
+		tenant_rbs_req__free_unpacked(t->rbs_req, 0);
+	}
+
+	if (t->ue_sched != NULL) {
+		ue_sched_select__free_unpacked(t->ue_sched, 0);
+	}
+
+	if (rbs_req) {
+		bsize = tenant_rbs_req__get_packed_size(rbs_req);
+		buffer = malloc(sizeof(uint8_t) * bsize);
+		if (buffer == NULL) {
+			return -1;
+		}
+		tenant_rbs_req__pack(rbs_req, buffer);
+		t->rbs_req = tenant_rbs_req__unpack(NULL, bsize, buffer);
+		bsize = 0;
+		free(buffer);
+	}
+
+	if (ue_sched) {
+		bsize = ue_sched_select__get_packed_size(ue_sched);
+		buffer = malloc(sizeof(uint8_t) * bsize);
+		if (buffer == NULL) {
+			return -1;
+		}
+		ue_sched_select__pack(ue_sched, buffer);
+		t->ue_sched = ue_sched_select__unpack(NULL, bsize, buffer);
+		bsize = 0;
+		free(buffer);
 	}
 
 	return 0;
 }
 
-int tenant_info_add (struct tenant_info *t) {
+int tenant_add_ue (
+	/* PLMN ID of the tenant. */
+	uint32_t plmn_id,
+	/* RNTI of the UE to be added. */
+	rnti_t rnti) {
+
+	tenant_info *t = tenant_info_get(plmn_id);
 
 	if (t == NULL)
 		return -1;
 
+	/* Store the UE RNTI. */
 	for (int i = 0; i < NUMBER_OF_UE_MAX; i++) {
-		t->ues_rnti[i] = NOT_A_RNTI;
+		if (t->ues_rnti[i] == NOT_A_RNTI) {
+			t->ues_rnti[i] = rnti;
+		}
 	}
-
-	/* Insert the tenant into the RB tree. */
-	RB_INSERT(
-				tenants_info_tree,
-				&ran_sh_sc_i.tenant_info_head,
-				t);
-
 	return 0;
 }
 
-int tenant_add_ue (char plmn_id[MAX_PLMN_LEN_P_NULL], rnti_t rnti) {
+int tenant_rem_ue (
+	/* PLMN ID of the tenant. */
+	uint32_t plmn_id,
+	/* RNTI of the UE to be removed. */
+	rnti_t rnti) {
 
-	struct tenant_info *t = NULL;
+	tenant_info *t = tenant_info_get(plmn_id);
 
-	/* Compare with each of the tenants stored. */
-	RB_FOREACH(
-				t,
-				tenants_info_tree,
-				&ran_sh_sc_i.tenant_info_head) {
-		if (strcmp(t->plmn_id, plmn_id) == 0) {
+	if (t == NULL)
+		return -1;
 
-			for (int i = 0; i < NUMBER_OF_UE_MAX; i++) {
-				if (t->ues_rnti[i] == NOT_A_RNTI) {
-					t->ues_rnti[i] = rnti;
-				}
-			}
-			return 0;
+	/* Remove the UE RNTI. */
+	for (int i = 0; i < NUMBER_OF_UE_MAX; i++) {
+		if (t->ues_rnti[i] == rnti) {
+			t->ues_rnti[i] = NOT_A_RNTI;
 		}
 	}
-	return -1;
+	return 0;
 }
-
-int tenant_rem_ue (char plmn_id[MAX_PLMN_LEN_P_NULL], rnti_t rnti) {
-
-	struct tenant_info *t = NULL;
-
-	/* Compare with each of the tenants stored. */
-	RB_FOREACH(
-				t,
-				tenants_info_tree,
-				&ran_sh_sc_i.tenant_info_head) {
-		if (strcmp(t->plmn_id, plmn_id) == 0) {
-
-			for (int i = 0; i < NUMBER_OF_UE_MAX; i++) {
-				if (t->ues_rnti[i] == rnti) {
-					t->ues_rnti[i] = NOT_A_RNTI;
-				}
-			}
-			return 0;
-		}
-	}
-	return -1;
-}
-
