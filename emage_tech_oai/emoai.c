@@ -40,10 +40,13 @@ int emoai_init (void) {
 	if (pthread_spin_init(&rrc_m_conf_t_lock, PTHREAD_PROCESS_SHARED) != 0) {
 		goto error;
 	}
+
+#ifdef RAN_SHARING_FLAG
 	/* Initializing lock for list of tenants information. */
 	if (pthread_spin_init(&tenants_info_lock, PTHREAD_PROCESS_SHARED) != 0) {
 		goto error;
 	}
+#endif /* RAN_SHARING_FLAG */
 
 	return 0;
 
