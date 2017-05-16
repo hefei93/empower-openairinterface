@@ -1531,8 +1531,8 @@ rrc_eNB_generate_defaultRRCConnectionReconfiguration(const protocol_ctxt_t* cons
   struct MeasConfig__speedStatePars  *Sparams                          = NULL;
   QuantityConfig_t                   *quantityConfig                   = NULL;
   MeasGapConfig_t                    *measGapConfig                    = NULL;
-  CellsToAddMod_t                    *CellToAdd                        = NULL;
-  CellsToAddModList_t                *CellsToAddModList                = NULL;
+  // CellsToAddMod_t                    *CellToAdd                        = NULL;
+  // CellsToAddModList_t                *CellsToAddModList                = NULL;
   struct RRCConnectionReconfiguration_r8_IEs__dedicatedInfoNASList *dedicatedInfoNASList = NULL;
   DedicatedInfoNAS_t                 *dedicatedInfoNas                 = NULL;
   /* for no gcc warnings */
@@ -2477,11 +2477,10 @@ rrc_eNB_process_MeasurementReport(
       p->rnti = ctxt_pP->rnti;
       /* Measurement request was a success. */
       p->reconfig_success = 1;
-      p->meas = malloc(sizeof(*measResults2));
-      memcpy(p->meas, measResults2, sizeof(*measResults2));
-      /* Create the thread where the triggered event will run. */
-      if(emoai_create_new_thread(emoai_trig_rrc_measurements, p) != 0) {
-        LOG_E(RRC, "Failed to create the rrc measurement trigger thread %x.\n", p->rnti);
+      p->meas = *measResults2;
+      /* Triggered event will run. */
+      if (emoai_trig_rrc_measurements(p) < 0) {
+        LOG_E(RRC, "Failed to send rrc measurements %x.\n", p->rnti);
       }
     #endif /* EMAGE_AGENT */
 
@@ -2758,12 +2757,12 @@ rrc_eNB_generate_RRCConnectionReconfiguration_handover(
 
   MAC_MainConfig_t                   *mac_MainConfig;
   MeasObjectToAddModList_t           *MeasObj_list;
-  MeasObjectToAddMod_t               *MeasObj;
+  // MeasObjectToAddMod_t               *MeasObj;
   ReportConfigToAddModList_t         *ReportConfig_list;
-  ReportConfigToAddMod_t             *ReportConfig_per, *ReportConfig_A1,
-                                     *ReportConfig_A2, *ReportConfig_A3, *ReportConfig_A4, *ReportConfig_A5;
+  // ReportConfigToAddMod_t             *ReportConfig_per, *ReportConfig_A1,
+  //                                    *ReportConfig_A2, *ReportConfig_A3, *ReportConfig_A4, *ReportConfig_A5;
   MeasIdToAddModList_t               *MeasId_list;
-  MeasIdToAddMod_t                   *MeasId0, *MeasId1, *MeasId2, *MeasId3, *MeasId4, *MeasId5;
+  // MeasIdToAddMod_t                   *MeasId0, *MeasId1, *MeasId2, *MeasId3, *MeasId4, *MeasId5;
   QuantityConfig_t                   *quantityConfig;
   MobilityControlInfo_t              *mobilityInfo;
   // HandoverCommand_t handoverCommand;
@@ -2778,8 +2777,8 @@ rrc_eNB_generate_RRCConnectionReconfiguration_handover(
 
   // RSRP_Range_t *rsrp;
   struct MeasConfig__speedStatePars  *Sparams;
-  CellsToAddMod_t                    *CellToAdd;
-  CellsToAddModList_t                *CellsToAddModList;
+  // CellsToAddMod_t                    *CellToAdd;
+  // CellsToAddModList_t                *CellsToAddModList;
   // srb 1: for HO
   struct SRB_ToAddMod                *SRB1_config;
   struct SRB_ToAddMod__rlc_Config    *SRB1_rlc_config;
@@ -4669,7 +4668,7 @@ rrc_eNB_decode_dcch(
   asn_dec_rval_t                      dec_rval;
   //UL_DCCH_Message_t uldcchmsg;
   UL_DCCH_Message_t                  *ul_dcch_msg = NULL; //&uldcchmsg;
-  UE_EUTRA_Capability_t              *UE_EUTRA_Capability = NULL;
+  // UE_EUTRA_Capability_t              *UE_EUTRA_Capability = NULL;
   int i;
   struct rrc_eNB_ue_context_s*        ue_context_p = NULL;
 
@@ -5104,7 +5103,7 @@ rrc_eNB_decode_dcch(
       LOG_I(RRC, "got UE capabilities for UE %x\n", ctxt_pP->rnti);
       dec_rval = uper_decode(NULL,
                              &asn_DEF_UE_EUTRA_Capability,
-                             (void **)&UE_EUTRA_Capability,
+                             (void **)&ue_context_p->ue_context.UE_EUTRA_Capability,
                              ul_dcch_msg->message.choice.c1.choice.ueCapabilityInformation.criticalExtensions.
                              choice.c1.choice.ueCapabilityInformation_r8.ue_CapabilityRAT_ContainerList.list.
                              array[0]->ueCapabilityRAT_Container.buf,
@@ -5112,12 +5111,8 @@ rrc_eNB_decode_dcch(
                              choice.c1.choice.ueCapabilityInformation_r8.ue_CapabilityRAT_ContainerList.list.
                              array[0]->ueCapabilityRAT_Container.size, 0, 0);
       //#ifdef XER_PRINT
-      //xer_fprint(stdout, &asn_DEF_UE_EUTRA_Capability, (void *)UE_EUTRA_Capability);
+      //xer_fprint(stdout, &asn_DEF_UE_EUTRA_Capability, (void *)ue_context_p->ue_context.UE_EUTRA_Capability);
       //#endif
-      ue_context_p->ue_context.UE_EUTRA_Capability = realloc(
-                                  ue_context_p->ue_context.UE_EUTRA_Capability,
-                                  sizeof(*UE_EUTRA_Capability));
-      memcpy(ue_context_p->ue_context.UE_EUTRA_Capability, UE_EUTRA_Capability, sizeof(*UE_EUTRA_Capability));
 
 #if defined(ENABLE_USE_MME)
 
