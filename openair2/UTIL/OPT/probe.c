@@ -241,7 +241,7 @@ static void SendFrame(guint8 radioType, guint8 direction, guint8 rntiType,
      static unsigned char frameBuffer[9000];
   #else
      static unsigned char frameBuffer[1600];
-  #endif 
+  #endif
   static unsigned int frameOffset;
 
   ssize_t bytesSent;
@@ -286,7 +286,7 @@ static void SendFrame(guint8 radioType, guint8 direction, guint8 rntiType,
 
   frameBuffer[frameOffset++] = MAC_LTE_CRC_STATUS_TAG;
   frameBuffer[frameOffset++] = crcStatus;
-  
+
 #ifdef WIRESHARK_DEV
   frameOffset += 2;
   tmp16 = htons(sfnSf); // subframe
@@ -346,7 +346,7 @@ static void SendFrame(guint8 radioType, guint8 direction, guint8 rntiType,
   /***************************************/
   /* Now write the MAC PDU               */
   frameBuffer[frameOffset++] = MAC_LTE_PAYLOAD_TAG;
-  
+
   /* Append actual PDU  */
   //memcpy(frameBuffer+frameOffset, g_PDUBuffer, g_PDUOffset);
   //frameOffset += g_PDUOffset;
@@ -449,7 +449,9 @@ void trace_pdu(int direction, uint8_t *pdu_buffer, unsigned int pdu_buffer_size,
 
     SendFrame(radio_type,
               (direction == DIRECTION_DOWNLINK) ? DIRECTION_DOWNLINK : DIRECTION_UPLINK,
-              rntiType, rnti, ueid, (sysFrameNumber<<4) + subFrameNumber,
+              // Fix for malformed packet error shown in wireshark.
+              // rntiType, rnti, ueid, (sysFrameNumber<<4) + subFrameNumber,
+              rntiType, rnti, ueid, subFrameNumber,
               1, 0, 1,  //guint8 isPredefinedData, guint8 retx, guint8 crcStatus
               oob_event,oob_event_value,
               pdu_buffer, pdu_buffer_size);
