@@ -166,6 +166,11 @@ void store_dlsch_buffer (module_id_t Mod_id,
                          frame_t     frameP,
                          sub_frame_t subframeP);
 
+// This fuction sorts the UE in order their dlsch buffer and CQI
+void sort_UEs (module_id_t Mod_idP,
+               int         frameP,
+               sub_frame_t subframeP);
+
 void dlsch_scheduler_pre_processor_reset (int module_idP,int UE_id,
     uint8_t  CC_id,
     int frameP,

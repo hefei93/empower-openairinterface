@@ -1643,10 +1643,10 @@ do_RRCConnectionSetup(
     physicalConfigDedicated2->soundingRS_UL_ConfigDedicated->choice.setup.freqDomainPosition=0;
     physicalConfigDedicated2->soundingRS_UL_ConfigDedicated->choice.setup.duration=1;
     if (frame_parms->frame_type==FDD) {
-      if (enb_properties.properties[ctxt_pP->module_id]->srs_SubframeConfig[CC_id]!=0) 
+      if (enb_properties.properties[ctxt_pP->module_id]->srs_SubframeConfig[CC_id]!=0)
 	LOG_W(RRC,"This code has been optimized for SRS Subframe Config 0, but current config is %d. Expect undefined behaviour!\n",
 	      enb_properties.properties[ctxt_pP->module_id]->srs_SubframeConfig[CC_id]);
-      if (ue_context_pP->local_uid >=20) 
+      if (ue_context_pP->local_uid >=20)
 	LOG_W(RRC,"This code has been optimized for up to 10 UEs, but current UE_id is %d. Expect undefined behaviour!\n",
 	      ue_context_pP->local_uid);
       //the current code will allow for 20 UEs - to be revised for more
@@ -1659,7 +1659,7 @@ do_RRCConnectionSetup(
 	      enb_properties.properties[ctxt_pP->module_id]->srs_SubframeConfig[CC_id],
 	      enb_properties.properties[ctxt_pP->module_id]->tdd_config[CC_id]);
       }
-      if (ue_context_pP->local_uid >=6) 
+      if (ue_context_pP->local_uid >=6)
 	LOG_W(RRC,"This code has been optimized for up to 6 UEs, but current UE_id is %d. Expect undefined behaviour!\n",
 	      ue_context_pP->local_uid);
       physicalConfigDedicated2->soundingRS_UL_ConfigDedicated->choice.setup.srs_ConfigIndex=17+ue_context_pP->local_uid/2;
@@ -2046,9 +2046,7 @@ do_RRCConnectionReconfiguration(
         sizeof(*rrcConnectionReconfiguration->criticalExtensions.choice.c1.choice.rrcConnectionReconfiguration_r8.radioResourceConfigDedicated->mac_MainConfig));
     rrcConnectionReconfiguration->criticalExtensions.choice.c1.choice.rrcConnectionReconfiguration_r8.radioResourceConfigDedicated->mac_MainConfig->present
       =RadioResourceConfigDedicated__mac_MainConfig_PR_explicitValue;
-    memcpy(&rrcConnectionReconfiguration->criticalExtensions.choice.c1.choice.rrcConnectionReconfiguration_r8.radioResourceConfigDedicated->mac_MainConfig->choice.explicitValue,
-           mac_MainConfig,
-           sizeof(*mac_MainConfig));
+    rrcConnectionReconfiguration->criticalExtensions.choice.c1.choice.rrcConnectionReconfiguration_r8.radioResourceConfigDedicated->mac_MainConfig->choice.explicitValue = *mac_MainConfig;
   } else {
     rrcConnectionReconfiguration->criticalExtensions.choice.c1.choice.rrcConnectionReconfiguration_r8.radioResourceConfigDedicated->mac_MainConfig=NULL;
   }
@@ -2068,31 +2066,20 @@ do_RRCConnectionReconfiguration(
     rrcConnectionReconfiguration->criticalExtensions.choice.c1.choice.rrcConnectionReconfiguration_r8.measConfig->measObjectToRemoveList   = MeasObj_rem_list;
 
     if (quantityConfig!=NULL) {
-      rrcConnectionReconfiguration->criticalExtensions.choice.c1.choice.rrcConnectionReconfiguration_r8.measConfig->quantityConfig = CALLOC(1,
-          sizeof(*rrcConnectionReconfiguration->criticalExtensions.choice.c1.choice.rrcConnectionReconfiguration_r8.measConfig->quantityConfig));
-      memcpy((void *)rrcConnectionReconfiguration->criticalExtensions.choice.c1.choice.rrcConnectionReconfiguration_r8.measConfig->quantityConfig,
-             (void *)quantityConfig,
-             sizeof(*rrcConnectionReconfiguration->criticalExtensions.choice.c1.choice.rrcConnectionReconfiguration_r8.measConfig->quantityConfig));
+      rrcConnectionReconfiguration->criticalExtensions.choice.c1.choice.rrcConnectionReconfiguration_r8.measConfig->quantityConfig = quantityConfig;
     } else {
       rrcConnectionReconfiguration->criticalExtensions.choice.c1.choice.rrcConnectionReconfiguration_r8.measConfig->quantityConfig = NULL;
     }
 
     // Added for mesaurement reporting - added the field measGapConfig
     if (measGapConfig != NULL) {
-      rrcConnectionReconfiguration->criticalExtensions.choice.c1.choice.rrcConnectionReconfiguration_r8.measConfig->measGapConfig = CALLOC(1,
-          sizeof(*rrcConnectionReconfiguration->criticalExtensions.choice.c1.choice.rrcConnectionReconfiguration_r8.measConfig->measGapConfig));
-      memcpy((void *)rrcConnectionReconfiguration->criticalExtensions.choice.c1.choice.rrcConnectionReconfiguration_r8.measConfig->measGapConfig,
-             (void *)measGapConfig,
-             sizeof(*rrcConnectionReconfiguration->criticalExtensions.choice.c1.choice.rrcConnectionReconfiguration_r8.measConfig->measGapConfig));
+      rrcConnectionReconfiguration->criticalExtensions.choice.c1.choice.rrcConnectionReconfiguration_r8.measConfig->measGapConfig = measGapConfig;
     } else {
       rrcConnectionReconfiguration->criticalExtensions.choice.c1.choice.rrcConnectionReconfiguration_r8.measConfig->measGapConfig = NULL;
     }
 
     if(speedStatePars != NULL) {
-      rrcConnectionReconfiguration->criticalExtensions.choice.c1.choice.rrcConnectionReconfiguration_r8.measConfig->speedStatePars = CALLOC(1,
-          sizeof(*rrcConnectionReconfiguration->criticalExtensions.choice.c1.choice.rrcConnectionReconfiguration_r8.measConfig->speedStatePars));
-      memcpy((void *)rrcConnectionReconfiguration->criticalExtensions.choice.c1.choice.rrcConnectionReconfiguration_r8.measConfig->speedStatePars,
-             (void *)speedStatePars,sizeof(*speedStatePars));
+      rrcConnectionReconfiguration->criticalExtensions.choice.c1.choice.rrcConnectionReconfiguration_r8.measConfig->speedStatePars = speedStatePars;
     } else {
       rrcConnectionReconfiguration->criticalExtensions.choice.c1.choice.rrcConnectionReconfiguration_r8.measConfig->speedStatePars = NULL;
     }
@@ -2104,11 +2091,7 @@ do_RRCConnectionReconfiguration(
   }
 
   if (mobilityInfo !=NULL) {
-    rrcConnectionReconfiguration->criticalExtensions.choice.c1.choice.rrcConnectionReconfiguration_r8.mobilityControlInfo = CALLOC(1,
-        sizeof(*rrcConnectionReconfiguration->criticalExtensions.choice.c1.choice.rrcConnectionReconfiguration_r8.mobilityControlInfo));
-    memcpy((void*)rrcConnectionReconfiguration->criticalExtensions.choice.c1.choice.rrcConnectionReconfiguration_r8.mobilityControlInfo, (void*)mobilityInfo,
-           sizeof(MobilityControlInfo_t));
-
+    rrcConnectionReconfiguration->criticalExtensions.choice.c1.choice.rrcConnectionReconfiguration_r8.mobilityControlInfo = mobilityInfo;
   } else {
     rrcConnectionReconfiguration->criticalExtensions.choice.c1.choice.rrcConnectionReconfiguration_r8.mobilityControlInfo  = NULL;
   }

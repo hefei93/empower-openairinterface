@@ -431,8 +431,8 @@ schedule_ue_spec(
   int                   N_RBG[MAX_NUM_CCs];
   unsigned char         aggregation;
   mac_rlc_status_resp_t rlc_status;
-  unsigned char         header_len_dcch=0, header_len_dcch_tmp=0; 
-  unsigned char         header_len_dtch=0, header_len_dtch_tmp=0, header_len_dtch_last=0; 
+  unsigned char         header_len_dcch=0, header_len_dcch_tmp=0;
+  unsigned char         header_len_dtch=0, header_len_dtch_tmp=0, header_len_dtch_last=0;
   unsigned char         ta_len=0;
   unsigned char         sdu_lcids[NB_RB_MAX],lcid,offset,num_sdus=0;
   uint16_t              nb_rb,nb_rb_temp,total_nb_available_rb[MAX_NUM_CCs],nb_available_rb;
@@ -602,7 +602,7 @@ schedule_ue_spec(
       round = ue_sched_ctl->round[CC_id];
       UE_list->eNB_UE_stats[CC_id][UE_id].crnti= rnti;
       UE_list->eNB_UE_stats[CC_id][UE_id].rrc_status=mac_eNB_get_rrc_status(module_idP,rnti);
-      UE_list->eNB_UE_stats[CC_id][UE_id].harq_pid = harq_pid; 
+      UE_list->eNB_UE_stats[CC_id][UE_id].harq_pid = harq_pid;
       UE_list->eNB_UE_stats[CC_id][UE_id].harq_round = round;
 
       sdu_length_total=0;
@@ -771,7 +771,7 @@ schedule_ue_spec(
             }
 
             break;
-	    /* 
+	    /*
 	    // this code is disabled for now - needs to be done properly
           case 4:
             //    if (nb_rb>10) {
@@ -894,7 +894,7 @@ schedule_ue_spec(
             sdu_length_total = 0;
           }
         }
-	
+
         // check for DCCH1 and update header information (assume 2 byte sub-header)
         if (TBS-ta_len-header_len_dcch-sdu_length_total > 0 ) {
           rlc_status = mac_rlc_status_ind(
@@ -952,14 +952,14 @@ schedule_ue_spec(
 	// lcid has to be sorted before the actual allocation (similar struct as ue_list).
 	for (lcid=NB_RB_MAX-1; lcid>=DTCH ; lcid--){
 	  // TBD: check if the lcid is active
-	  
-	  header_len_dtch+=3; 
+
+	  header_len_dtch+=3;
 	  header_len_dtch_last=3;
 	  LOG_D(MAC,"[eNB %d], Frame %d, DTCH%d->DLSCH, Checking RLC status (tbs %d, len %d)\n",
 		module_idP,frameP,lcid,TBS,
 		TBS-ta_len-header_len_dcch-sdu_length_total-header_len_dtch);
-	  
-	  if (TBS-ta_len-header_len_dcch-sdu_length_total-header_len_dtch > 0 ) { // NN: > 2 ? 
+
+	  if (TBS-ta_len-header_len_dcch-sdu_length_total-header_len_dtch > 0 ) { // NN: > 2 ?
 	    rlc_status = mac_rlc_status_ind(module_idP,
 					    rnti,
 					    module_idP,
@@ -969,10 +969,10 @@ schedule_ue_spec(
 					    MBMS_FLAG_NO,
 					    lcid,
 					    TBS-ta_len-header_len_dcch-sdu_length_total-header_len_dtch);
-	   
+
 
 	    if (rlc_status.bytes_in_buffer > 0) {
-	      
+
 	      LOG_D(MAC,"[eNB %d][USER-PLANE DEFAULT DRB] Frame %d : DTCH->DLSCH, Requesting %d bytes from RLC (lcid %d total hdr len %d)\n",
 		    module_idP,frameP,TBS-header_len_dcch-sdu_length_total-header_len_dtch,lcid, header_len_dtch);
 	      sdu_lengths[num_sdus] = mac_rlc_data_req(module_idP,
@@ -1004,15 +1004,15 @@ schedule_ue_spec(
 	  } // no TBS left
 	  else {
 	    header_len_dtch-=3;
-	    break; 
+	    break;
 	  }
 	}
 	if (header_len_dtch == 0 )
 	  header_len_dtch_last= 0;
-	// there is at least one SDU 
+	// there is at least one SDU
 	// if (num_sdus > 0 ){
 	if ((sdu_length_total + header_len_dcch + header_len_dtch )> 0) {
-	  
+
 	  // Now compute number of required RBs for total sdu length
 	  // Assume RAH format 2
 	  // adjust  header lengths
@@ -1021,7 +1021,7 @@ schedule_ue_spec(
 	  if (header_len_dtch==0) {
 	    header_len_dcch = (header_len_dcch >0) ? 1 : 0;//header_len_dcch;  // remove length field
 	  } else {
-	    header_len_dtch_last-=1; // now use it to find how many bytes has to be removed for the last MAC SDU 
+	    header_len_dtch_last-=1; // now use it to find how many bytes has to be removed for the last MAC SDU
 	    header_len_dtch = (header_len_dtch > 0) ? header_len_dtch - header_len_dtch_last  :header_len_dtch;     // remove length field for the last SDU
 	  }
 
@@ -1201,20 +1201,20 @@ schedule_ue_spec(
 	  // do PUCCH power control
           // this is the normalized RX power
 	  eNB_UE_stats =  mac_xface->get_eNB_UE_stats(module_idP,CC_id,rnti);
-	  normalized_rx_power = eNB_UE_stats->Po_PUCCH_dBm; 
+	  normalized_rx_power = eNB_UE_stats->Po_PUCCH_dBm;
 	  target_rx_power = mac_xface->get_target_pucch_rx_power(module_idP,CC_id) + 20;
-	    
+
           // this assumes accumulated tpc
 	  // make sure that we are only sending a tpc update once a frame, otherwise the control loop will freak out
 	  int32_t framex10psubframe = UE_list->UE_template[CC_id][UE_id].pucch_tpc_tx_frame*10+UE_list->UE_template[CC_id][UE_id].pucch_tpc_tx_subframe;
           if (((framex10psubframe+10)<=(frameP*10+subframeP)) || //normal case
 	      ((framex10psubframe>(frameP*10+subframeP)) && (((10240-framex10psubframe+frameP*10+subframeP)>=10)))) //frame wrap-around
-	    if (eNB_UE_stats->Po_PUCCH_update == 1) { 
+	    if (eNB_UE_stats->Po_PUCCH_update == 1) {
 	      eNB_UE_stats->Po_PUCCH_update = 0;
 
 	      UE_list->UE_template[CC_id][UE_id].pucch_tpc_tx_frame=frameP;
 	      UE_list->UE_template[CC_id][UE_id].pucch_tpc_tx_subframe=subframeP;
-	      
+
 	      if (normalized_rx_power>(target_rx_power+1)) {
 		tpc = 0; //-1
 		tpc_accumulated--;
@@ -1224,15 +1224,15 @@ schedule_ue_spec(
 	      } else {
 		tpc = 1; //0
 	      }
-	      /*	      
+	      /*
 	      LOG_I(MAC,"[eNB %d] DLSCH scheduler: frame %d, subframe %d, harq_pid %d, tpc %d, accumulated %d, normalized/target rx power %d/%d\n",
 		    module_idP,frameP, subframeP,harq_pid,tpc,
 		    tpc_accumulated,normalized_rx_power,target_rx_power);*/
 
-	    } // Po_PUCCH has been updated 
+	    } // Po_PUCCH has been updated
 	    else {
 	      tpc = 1; //0
-	    } // time to do TPC update 
+	    } // time to do TPC update
 	  else {
 	    tpc = 1; //0
 	  }
@@ -1721,7 +1721,7 @@ fill_DLSCH_dci(
       continue;
 
     DCI_pdu         = &eNB->common_channels[CC_id].DCI_pdu;
-    
+
 
     // UE specific DCIs
     for (UE_id=UE_list->head; UE_id>=0; UE_id=UE_list->next[UE_id]) {
