@@ -27,10 +27,15 @@
 #include <emage/emlog.h>
 #include <emage/emage.h>
 #include "emoai_common.h"
+#include "emoai_rrc_measurements.h"
 
 #include "MeasObjectEUTRA.h"
 #include "ReportConfigEUTRA.h"
 #include "openair2/RRC/LITE/defs.h"
+
+#ifdef RAN_SHARING_FLAG
+	#include <emage/pb/ran_sharing.pb-c.h>
+#endif /* RAN_SHARING_FLAG */
 
 /* UE identifier template. */
 typedef int ueid_t;
@@ -130,6 +135,14 @@ struct rrc_m_conf_trigg_tree;
  * Returns CellInformation pointer.
  */
 CellInformation * emoai_prep_cell_info (module_id_t m_id, int cc_id);
+
+#ifdef RAN_SHARING_FLAG
+/* Prepares CC/Cell specific RAN sharing information message in Downlink of eNB.
+ *
+ * Returns RbsAllocPerCell pointer.
+ */
+RbsAllocPerCell * emoai_prep_ran_sh_dl_info (module_id_t m_id, int cc_id);
+#endif /* RAN_SHARING_FLAG */
 
 /* Parses the eNB cells info request and prepares the requested cells report.
  *

@@ -21,7 +21,7 @@
 
 #include "openair1/PHY/extern.h"
 #ifdef RAN_SHARING_FLAG
-	#include "ran_sharing_sched.h"
+	#include "ran_sharing_extern.h"
 #endif /* RAN_SHARING_FLAG */
 
 /* Holds the transaction id of UEs ID report trigger request.
@@ -848,6 +848,24 @@ int emoai_RRC_meas_conf_report (
 	repl->has_freq = 1;
 	/* Fetching operating DL frequency of eNB on CC ID 0. */
 	repl->freq = emoai_get_operating_dl_freq(0);
+	/* EARFCN conversion. */
+	if (emoai_get_eNB_dupl_mode(0) == DD_MODE__DDM_FDD) {
+		/* Iterate through FDD bands. */
+		for (i = 0; i < 38; i++) {
+			if (fdd_bands_dl[i].n == emoai_get_operating_band(0)) {
+				repl->freq -= fdd_bands_dl[i].f_DLl;
+				repl->freq = (repl->freq * 10) + fdd_bands_dl[i].cn_DLl;
+			}
+		}
+	} else {
+		/* Iterate through TDD bands. */
+		for (int i = 0; i < 14; i++) {
+			if (tdd_bands[i].n == emoai_get_operating_band(0)) {
+				repl->freq -= tdd_bands[i].f_l;
+				repl->freq = (repl->freq * 10) + tdd_bands[i].cn_l;
+			}
+		}
+	}
 
 	repl->has_pcell_dd = 1;
 	/* Fetching operating duplexing mode of eNB on CC ID 0. */
@@ -971,19 +989,37 @@ int rrc_m_conf_add_trigg (struct rrc_m_conf_trigg *ctxt) {
 
 CellInformation * emoai_prep_cell_info (module_id_t m_id, int cc_id) {
 
-	LTE_DL_FRAME_PARMS *fp =
-						mac_xface->get_lte_frame_parms(m_id, cc_id);
+	int i;
 
-	const Enb_properties_array_t *enb_p = enb_config_get();
+	LTE_DL_FRAME_PARMS *fp = mac_xface->get_lte_frame_parms(m_id, cc_id);
 
 	/* Initialize individual cells. */
 	CellInformation *cell = malloc(sizeof(CellInformation));
 	cell_information__init(cell);
 
 	cell->phys_cell_id = fp->Nid_cell;
-	cell->carrier_freq =
-				enb_p->properties[m_id]->downlink_frequency[cc_id] / 1000000;
 
+	cell->carrier_freq = emoai_get_operating_dl_freq(cc_id);
+	/* EARFCN conversion. */
+	if (emoai_get_eNB_dupl_mode(cc_id) == DD_MODE__DDM_FDD) {
+		/* Iterate through FDD bands. */
+		for (i = 0; i < 38; i++) {
+			if (fdd_bands_dl[i].n == emoai_get_operating_band(cc_id)) {
+				cell->carrier_freq -= fdd_bands_dl[i].f_DLl;
+				cell->carrier_freq = (cell->carrier_freq * 10) +
+														fdd_bands_dl[i].cn_DLl;
+			}
+		}
+	} else {
+		/* Iterate through TDD bands. */
+		for (int i = 0; i < 14; i++) {
+			if (tdd_bands[i].n == emoai_get_operating_band(cc_id)) {
+				cell->carrier_freq -= tdd_bands[i].f_l;
+				cell->carrier_freq = (cell->carrier_freq * 10) +
+															tdd_bands[i].cn_l;
+			}
+		}
+	}
 	cell->has_num_rbs_dl = 1;
 	cell->num_rbs_dl = fp->N_RB_DL;
 	cell->has_num_rbs_ul = 1;
@@ -1000,6 +1036,65 @@ CellInformation * emoai_prep_cell_info (module_id_t m_id, int cc_id) {
 
 	return cell;
 }
+
+#ifdef RAN_SHARING_FLAG
+
+RbsAllocPerCell * emoai_prep_ran_sh_dl_info (module_id_t m_id, int cc_id) {
+
+	int i, j, m;
+
+	LTE_DL_FRAME_PARMS *fp = mac_xface->get_lte_frame_parms(m_id, cc_id);
+
+	RbsAllocPerCell *rbs_alloc_dl = malloc(sizeof(RbsAllocPerCell));
+	rbs_alloc_per_cell__init(rbs_alloc_dl);
+	/* Physical cell id. */
+	rbs_alloc_dl->phys_cell_id = fp->Nid_cell;
+	/* Number of subframes equals the scheduling window. */
+	rbs_alloc_dl->n_sf = eNB_ran_sh.sched_window_dl;
+
+	RbsAllocOverSf **sf = malloc(rbs_alloc_dl->n_sf * sizeof(RbsAllocOverSf *));
+
+	for (j = 0; j < rbs_alloc_dl->n_sf; j++) {
+		sf[j] = malloc(sizeof(RbsAllocOverSf));
+		rbs_alloc_over_sf__init(sf[j]);
+		/* Number of elements equals to number of RBs of cell. */
+		sf[j]->n_rbs_alloc = fp->N_RB_DL;
+		sf[j]->rbs_alloc = malloc(sf[j]->n_rbs_alloc * sizeof(char *));
+
+		for (i = 0; i < sf[j]->n_rbs_alloc; i++) {
+			sf[j]->rbs_alloc[i] = calloc(MAX_PLMN_LEN_P_NULL, sizeof(char));
+
+			if (eNB_ran_sh.cell[cc_id].sfalloc_dl[j].rbs_alloc[i] ==
+																RB_RESERVED) {
+				strcpy(sf[j]->rbs_alloc[i], "-1");
+				continue;
+			}
+
+			/* Tenant PLMN ID. Conversion to string. */
+			sprintf(sf[j]->rbs_alloc[i], "%x",
+					eNB_ran_sh.cell[cc_id].sfalloc_dl[j].rbs_alloc[i]);
+
+			for (m = 0; m < strlen(sf[j]->rbs_alloc[i]); m++) {
+				if (sf[j]->rbs_alloc[i][m] == 'F' ||
+												sf[j]->rbs_alloc[i][m] == 'f') {
+					sf[j]->rbs_alloc[i][m] = '0';
+				} else {
+					break;
+				}
+			}
+
+			if (sf[j]->rbs_alloc[i][strlen(sf[j]->rbs_alloc[i]) - 1] == 'F' ||
+				sf[j]->rbs_alloc[i][strlen(sf[j]->rbs_alloc[i]) - 1] == 'f') {
+				sf[j]->rbs_alloc[i][strlen(sf[j]->rbs_alloc[i]) - 1] = '\0';
+			}
+		}
+	}
+	rbs_alloc_dl->sf = sf;
+
+	return rbs_alloc_dl;
+}
+
+#endif /* RAN_SHARING_FLAG */
 
 int emoai_eNB_cells_report (EmageMsg *request, EmageMsg **reply) {
 
@@ -1041,12 +1136,48 @@ int emoai_eNB_cells_report (EmageMsg *request, EmageMsg **reply) {
 #ifdef RAN_SHARING_FLAG
 	/* RAN sharing information is requested. */
 	if (req->enb_info_types & E_NB_CELLS_INFO_TYPES__ENB_RAN_SHARING_INFO) {
-		/* Initialize RAN sharing info message. */
-		RanSharingInfo *ran_sh_i = malloc(sizeof(RanSharingInfo));
-		/* RAN sharing Downlink scheduling information. */
-		RbsAllocEveryFrame *rbs_alloc_dl = malloc(sizeof(RbsAllocEveryFrame));
+		/* Initialize eNB RAN sharing info message. */
+		ENBRanSharingInfo *ran_sh_i = malloc(sizeof(ENBRanSharingInfo));
+		e_nb_ran_sharing_info__init(ran_sh_i);
+		/* Scheduling window information. */
+		ran_sh_i->sched_window_dl = eNB_ran_sh.sched_window_dl;
+		ran_sh_i->sched_window_ul = eNB_ran_sh.sched_window_ul;
+		/* Available Tenant Schedulers implementations. */
+		ran_sh_i->n_tenant_schedulers = 0;
+		ran_sh_i->tenant_schedulers = NULL;
+		/* Available UE Schedulers implementations. */
+		ran_sh_i->n_ue_schedulers = 0;
+		ran_sh_i->ue_schedulers = NULL;
 
+		ran_sh_i->n_rbs_alloc_dl = MAX_NUM_CCs;
+		ran_sh_i->rbs_alloc_dl =
+				malloc(ran_sh_i->n_rbs_alloc_dl * sizeof(RbsAllocPerCell *));
 
+		ran_sh_i->n_rbs_alloc_ul = 0;
+		ran_sh_i->rbs_alloc_ul = NULL;
+
+		ran_sh_i->n_cell = MAX_NUM_CCs;
+		ran_sh_i->cell =
+						malloc(ran_sh_i->n_cell * sizeof(CellRanSharingInfo *));
+		/* Looping over all Component Carriers / Cells. */
+		for (cc_id = 0; cc_id < MAX_NUM_CCs; cc_id++) {
+
+			LTE_DL_FRAME_PARMS *fp =
+						mac_xface->get_lte_frame_parms(DEFAULT_ENB_ID, cc_id);
+
+			ran_sh_i->rbs_alloc_dl[cc_id] =
+							emoai_prep_ran_sh_dl_info(DEFAULT_ENB_ID, cc_id);
+
+			ran_sh_i->cell[cc_id] = malloc(sizeof(CellRanSharingInfo));
+			cell_ran_sharing_info__init(ran_sh_i->cell[cc_id]);
+			ran_sh_i->cell[cc_id]->phys_cell_id = fp->Nid_cell;
+			/* Fill the remaining RBs not allocated to any tenant. */
+			ran_sh_i->cell[cc_id]->avail_rbs_dl =
+										eNB_ran_sh.cell[cc_id].avail_rbs_dl;
+			ran_sh_i->cell[cc_id]->avail_rbs_ul =
+										eNB_ran_sh.cell[cc_id].avail_rbs_ul;
+		}
+		repl->ran_sh_i = ran_sh_i;
 	}
 #endif /* RAN_SHARING_FLAG */
 
