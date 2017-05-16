@@ -59,7 +59,7 @@ struct tdd_bands_bw t_bands_bw[14] = {
 
 /* Lookup for each of EUTRA TDD bands.
  */
-struct tdd_bands_i tdd_bands[14] = {
+tdd_bands_i tdd_bands[14] = {
 	{.n = 33, .cn_l = 36000, .cn_h = 36199, .f_l = 1900},
 	{.n = 34, .cn_l = 36200, .cn_h = 36349, .f_l = 2010},
 	{.n = 35, .cn_l = 36350, .cn_h = 36949, .f_l = 1850},
@@ -127,7 +127,7 @@ struct fdd_bands_bw f_bands_bw[38] = {
 
 /* Lookup for DL of each of EUTRA FDD bands.
  */
-struct fdd_bands_dl_i fdd_bands_dl[38] = {
+fdd_bands_dl_i fdd_bands_dl[38] = {
 	{.n = 1, .cn_DLl = 0, .cn_DLh = 599, .f_DLl = 2110},
 	{.n = 2, .cn_DLl = 600, .cn_DLh = 1199, .f_DLl = 1930},
 	{.n = 3, .cn_DLl = 1200, .cn_DLh = 1949, .f_DLl = 1805},
@@ -264,16 +264,16 @@ int emoai_trig_rrc_measurements (struct rrc_meas_params *p) {
 	pthread_spin_lock(&rrc_meas_t_lock);
 
 	struct rrc_meas_trigg *ctxt;
-	ctxt = rrc_meas_get_trigg(p->rnti, p->meas->measId);
+	ctxt = rrc_meas_get_trigg(p->rnti, p->meas.measId);
 
 	pthread_spin_unlock(&rrc_meas_t_lock);
 /****** UNLOCK ****************************************************************/
 
 	if (ctxt == NULL) {
 
-		emoai_RRC_meas_reconf(p->rnti, -1, p->meas->measId, NULL, NULL);
+		emoai_RRC_meas_reconf(p->rnti, -1, p->meas.measId, NULL, NULL);
 		/* Free the measurement report received from UE. */
-		ASN_STRUCT_FREE(asn_DEF_MeasResults, p->meas);
+		ASN_STRUCT_FREE_CONTENTS_ONLY(asn_DEF_MeasResults, &p->meas);
 		/* Free the params. */
 		free(p);
 		return 0;
@@ -285,17 +285,17 @@ int emoai_trig_rrc_measurements (struct rrc_meas_params *p) {
 	*/
 	if (em_has_trigger(b_id, ctxt->t_id, EM_RRC_MEAS_TRIGGER) == 0) {
 
-		emoai_RRC_meas_reconf(p->rnti, -1, p->meas->measId, NULL, NULL);
+		emoai_RRC_meas_reconf(p->rnti, -1, p->meas.measId, NULL, NULL);
 		/* Trigger does not exist in agent so remove from wrapper as well. */
 		if (rrc_meas_rem_trigg(ctxt) < 0) {
 			goto error;
 		}
 	}
 
-	if (p->meas == NULL)
-		goto error;
+	// if (p->meas == NULL)
+	// 	goto error;
 	/* RRC Measurements received from UE. */
-	MeasResults_t *meas = p->meas;
+	MeasResults_t *meas = &p->meas;
 
 	/* Initialize and form the reply message. */
 	EmageMsg *reply;
@@ -345,6 +345,13 @@ int emoai_trig_rrc_measurements (struct rrc_meas_params *p) {
 	/* Set the measurement ID of measurement. */
 	repl->has_measid = 1;
 	repl->measid = meas->measId;
+	/* Set the measured frequency. */
+	/* Only EUTRA measurements are supported now. */
+	if (ctxt->m_obj->meas_obj_case == MEAS_OBJECT__MEAS_OBJ_MEAS_OBJ__EUTRA &&
+		ctxt->m_obj->measobj_eutra->has_carrier_freq) {
+		repl->has_freq = 1;
+		repl->freq = ctxt->m_obj->measobj_eutra->carrier_freq;
+	}
 	/* Fill the Primary Cell RSRP and RSRQ. */
 	repl->has_pcell_rsrp = 1;
 	repl->has_pcell_rsrq = 1;
@@ -525,7 +532,7 @@ int emoai_trig_rrc_measurements (struct rrc_meas_params *p) {
 	}
 
 	/* Free the measurement report received from UE. */
-	ASN_STRUCT_FREE(asn_DEF_MeasResults, p->meas);
+	ASN_STRUCT_FREE_CONTENTS_ONLY(asn_DEF_MeasResults, &p->meas);
 	/* Free the params. */
 	free(p);
 
@@ -534,7 +541,7 @@ int emoai_trig_rrc_measurements (struct rrc_meas_params *p) {
 	error:
 		EMLOG("Error triggering RRC measurements message!");
 		/* Free the measurement report received from UE. */
-		ASN_STRUCT_FREE(asn_DEF_MeasResults, p->meas);
+		ASN_STRUCT_FREE_CONTENTS_ONLY(asn_DEF_MeasResults, &p->meas);
 		/* Free the params. */
 		free(p);
 		return -1;
@@ -1137,16 +1144,18 @@ int rrc_meas_trigg_update_measObj (int mo_id, MeasObject *m_obj) {
 		/* Replace cells and blacklist cells list with that of request. */
 		ctxt_mo->n_cells = req_mo->n_cells;
 		if (ctxt_mo->n_cells > 0) {
-			ctxt_mo->cells = malloc(sizeof(*req_mo->cells));
-			memcpy(ctxt_mo->cells, req_mo->cells, sizeof(*req_mo->cells));
+			ctxt_mo->cells = malloc(ctxt_mo->n_cells * sizeof(CellsToMeasure));
+			memcpy(ctxt_mo->cells,
+					req_mo->cells, sizeof(CellsToMeasure) * ctxt_mo->n_cells);
 		}
 		ctxt_mo->n_bkl_cells = req_mo->n_bkl_cells;
 		if (ctxt_mo->n_bkl_cells > 0) {
-			ctxt_mo->bkl_cells = malloc(sizeof(*req_mo->bkl_cells));
+			ctxt_mo->bkl_cells =
+						malloc(ctxt_mo->n_bkl_cells * sizeof(BlacklistCells));
 			memcpy(
 				ctxt_mo->bkl_cells,
 				req_mo->bkl_cells,
-				sizeof(*req_mo->bkl_cells));
+				sizeof(BlacklistCells) * ctxt_mo->n_bkl_cells);
 		}
 	} else {
 		goto error;
@@ -1164,10 +1173,11 @@ int emoai_RRC_measurements (
 	EmageMsg **reply,
 	unsigned int trigger_id) {
 
-	uint32_t ue_id;
+	uint32_t ue_id, buff_size;
 	struct rrc_meas_trigg *t_ctxt;
 	StatsReqStatus req_status = STATS_REQ_STATUS__SREQS_SUCCESS;
 	int repConf_id = 0, measObj_id = 0, meas_id = 0;
+	uint8_t *buffer = NULL;
 
 	RrcMeasReq *req;
 	/* RRC measurement for now supports only triggered event based replies. */
@@ -1330,10 +1340,27 @@ int emoai_RRC_measurements (
 	t_ctxt->t_id = request->head->t_id;
 	t_ctxt->rnti = req->rnti;
 	t_ctxt->measId = meas_id;
-	t_ctxt->m_obj = malloc(sizeof(*req->m_obj));
-	memcpy(t_ctxt->m_obj, req->m_obj, sizeof(*req->m_obj));
-	t_ctxt->r_conf = malloc(sizeof(*req->r_conf));
-	memcpy(t_ctxt->r_conf, req->r_conf, sizeof(*req->r_conf));
+	/* Deep copy the contents of MeasObj. */
+	buff_size = meas_object__get_packed_size(req->m_obj);
+	buffer = malloc(sizeof(uint8_t) * buff_size);
+	if (buffer == NULL) {
+		goto req_error;
+	}
+	meas_object__pack(req->m_obj, buffer);
+	t_ctxt->m_obj = meas_object__unpack(NULL, buff_size, buffer);
+	buff_size = 0;
+	free(buffer);
+	/* Deep copy the contents of ReportConf. */
+	buff_size = report_config__get_packed_size(req->r_conf);
+	buffer = malloc(sizeof(uint8_t) * buff_size);
+	if (buffer == NULL) {
+		goto req_error;
+	}
+	report_config__pack(req->r_conf, buffer);
+	t_ctxt->r_conf = report_config__unpack(NULL, buff_size, buffer);
+	buff_size = 0;
+	free(buffer);
+
 	rrc_meas_add_trigg(t_ctxt);
 
 req_error:
@@ -1341,6 +1368,7 @@ req_error:
 	repl->status = req_status;
 	repl->has_measid = 1;
 	repl->measid = meas_id;
+	repl->has_freq = 0;
 	repl->has_pcell_rsrp = 0;
 	repl->has_pcell_rsrq = 0;
 	repl->neigh_meas = NULL;

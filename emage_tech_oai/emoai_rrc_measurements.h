@@ -39,7 +39,7 @@ struct rrc_meas_params {
 	/* Flag to indicate whether measurements reconfig was success or failure. */
 	int reconfig_success;
 	/* RRC Measurements received from UE. */
-	MeasResults_t *meas;
+	MeasResults_t meas;
 };
 
 /* Trigger to send RRC measurements to controller. Triggered when a UE sends
@@ -101,7 +101,7 @@ struct tdd_bands_bw {
 
 /* Holds all the information about each of EUTRA TDD bands.
  */
-struct tdd_bands_i {
+typedef struct {
 	/* Band number of the EUTRA band. */
 	int n;
 	/* EARFCN lowest value for this band. */
@@ -110,7 +110,7 @@ struct tdd_bands_i {
 	uint32_t cn_h;
 	/* Lowest frequency for this band (MHz). */
 	float f_l;
-};
+} tdd_bands_i;
 
 /* Holds all the information about Bandwidth of each of EUTRA FDD bands.
  */
@@ -123,7 +123,7 @@ struct fdd_bands_bw {
 
 /* Holds all the information about DL of each of EUTRA FDD bands.
  */
-struct fdd_bands_dl_i {
+typedef struct {
 	/* Band number of the EUTRA band. */
 	int n;
 	/* EARFCN lowest value in DL for this band. */
@@ -132,7 +132,7 @@ struct fdd_bands_dl_i {
 	uint32_t cn_DLh;
 	/* Lowest frequency in DL for this band (MHz). */
 	float f_DLl;
-};
+} fdd_bands_dl_i;
 
 /* Get DL frequency from EARFCN number for FDD bands.
  */
@@ -256,5 +256,12 @@ int rrc_meas_req (uint32_t *rnti);
 /* RB Tree holding all request parameters related to RRC measurements trigger.
  */
 struct rrc_meas_trigg_tree;
+
+/* Lookup for DL of each of EUTRA FDD bands.
+ */
+extern fdd_bands_dl_i fdd_bands_dl[38];
+/* Lookup for each of EUTRA TDD bands.
+ */
+extern tdd_bands_i tdd_bands[14];
 
 #endif
