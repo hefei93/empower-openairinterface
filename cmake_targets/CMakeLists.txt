@@ -1800,10 +1800,11 @@ if (${RAN_SHARING_FLAG})
   include_directories (${RAN_SHARING_UE_SCHED_DIR})
 
   add_library(RAN_SHARING
-    ${RAN_SHARING_CORE_DIR}/tenant.c
     ${RAN_SHARING_CORE_DIR}/ran_sharing_sched.c
-    ${RAN_SHARING_CORE_DIR}/emoai_ran_sharing_ctrl.c
+    ${RAN_SHARING_CORE_DIR}/tenant.c
+    # ${RAN_SHARING_CORE_DIR}/emoai_ran_sharing_ctrl.c
     ${RAN_SHARING_UE_SCHED_DIR}/rr.c
+
   )
 
   set(RAN_SHARING_LIB RAN_SHARING)

@@ -100,7 +100,7 @@ void ran_sharing_dlsch_sched_alloc (
 
 /* Fetch the Component Carrier Id based on the Physical Cell Id.
  */
-int pci_to_cc_id (
+int pci_to_cc_id_dl (
 	/* Module identifier. */
 	module_id_t m_id,
 	/* Physical Cell Id. */

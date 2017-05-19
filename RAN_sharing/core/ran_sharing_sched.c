@@ -129,7 +129,7 @@ void ran_sharing_dlsch_sched (
 				}
 
 				for (n = 0; n < tenant->rbs_req->n_rbs_dl; n++) {
-					id = pci_to_cc_id(
+					id = pci_to_cc_id_dl(
 							m_id,
 							tenant->rbs_req->rbs_dl[n]->phys_cell_id);
 					/* Invalid CC Id. */
@@ -169,7 +169,7 @@ void ran_sharing_dlsch_sched (
 			tenant = &eNB_ran_sh.tenants[i];
 
 			for (n = 0; n < tenant->rbs_req->n_rbs_dl; n++) {
-				id = pci_to_cc_id(
+				id = pci_to_cc_id_dl(
 						m_id,
 						tenant->rbs_req->rbs_dl[n]->phys_cell_id);
 				/* Invalid CC Id. */
@@ -737,7 +737,7 @@ void ran_sharing_dlsch_sched_reset (
 	// printf("\n Exiting RESET \n");
 }
 
-int pci_to_cc_id (
+int pci_to_cc_id_dl (
 	/* Module identifier. */
 	module_id_t m_id,
 	/* Physical Cell Id. */
@@ -851,13 +851,12 @@ int ran_sharing_sched_init (
 			printf("\n SW %d\n", sf);
 
 			for (rb = 0; rb < cell->sfalloc_dl[sf].n_rbs_alloc; rb++) {
-				if (rb <= 4) {
-					cell->sfalloc_dl[sf].rbs_alloc[rb]= 0x22293F;
-				}
-				else if (rb >= 20) {
+				if (rb < 13) {
 					cell->sfalloc_dl[sf].rbs_alloc[rb]= 0x20893F;
 				}
-
+				else {
+					cell->sfalloc_dl[sf].rbs_alloc[rb]= 0x22293F;
+				}
 #if 1
 				printf("%lx\t", cell->sfalloc_dl[sf].rbs_alloc[rb]);
 #endif
@@ -913,14 +912,20 @@ int ran_sharing_sched_init (
 	}
 
 	t_ues_id[0].plmn_id = 0x22293F;
-	t_ues_id[0].ue_ids[0] = 0;
-	t_ues_id[0].ue_ids[1] = 2;
-	t_ues_id[0].ue_ids[2] = 4;
+	t_ues_id[0].ue_ids[0] = 1;
+	t_ues_id[0].ue_ids[1] = 3;
+	t_ues_id[0].ue_ids[2] = 5;
+	// t_ues_id[0].ue_ids[0] = 0;
+	// t_ues_id[0].ue_ids[1] = 2;
+	// t_ues_id[0].ue_ids[2] = 4;
 
 	t_ues_id[1].plmn_id = 0x20893F;
-	t_ues_id[1].ue_ids[0] = 1;
-	t_ues_id[1].ue_ids[1] = 3;
-	t_ues_id[1].ue_ids[2] = 5;
+	t_ues_id[1].ue_ids[0] = 0;
+	t_ues_id[1].ue_ids[1] = 2;
+	t_ues_id[1].ue_ids[2] = 4;
+	// t_ues_id[1].ue_ids[0] = 1;
+	// t_ues_id[1].ue_ids[1] = 3;
+	// t_ues_id[1].ue_ids[2] = 5;
 
 	return 0;
 }
