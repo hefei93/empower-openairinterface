@@ -54,9 +54,9 @@ void ran_sharing_dlsch_sched (
 	/* Minimum number of RBs to be allocated to a UE in each CCs. */
 	int min_rb_unit[MAX_NUM_CCs]) {
 
-	int cc_id, i, j, t, n, id;
+	int cc_id, i, j, t, n, id, plmn_present;
 	rnti_t rnti;
-	tenant_info tn, *tenant;
+	tenant_info *tenant;
 	uint64_t sw_sf;
 	cell_ran_sharing *cell;
 	/* List of UEs. */
@@ -74,7 +74,7 @@ void ran_sharing_dlsch_sched (
 	unsigned char MIMO_mode_indicator[MAX_NUM_CCs][N_RBG_MAX];
 
 	/* PLMN IDs of the scheduled tenants. */
-	uint32_t scheduled_t[MAX_TENANTS] = {0};
+	uint32_t scheduled_t[MAX_TENANTS] = {0, 0, 0, 0, 0, 0};
 
 	/* Tracking the SF number in DL scheduling window. */
 	eNB_ran_sh.dl_sw_sf = (f * NUM_SF_IN_FRAME + sf) %
@@ -224,26 +224,29 @@ void ran_sharing_dlsch_sched (
 		cell = &eNB_ran_sh.cell[cc_id];
 		/* Looping over all the Resource Blocks. */
 		for (i = 0; i < frame_parms[cc_id]->N_RB_DL; i++) {
-			int plmn_present = 0;
-			for (j = 0; j < MAX_TENANTS; j++) {
-				if (cell->sfalloc_dl[sw_sf].rbs_alloc[i] != RB_RESERVED &&
-					cell->sfalloc_dl[sw_sf].rbs_alloc[i] == scheduled_t[j]
-									&&
-					scheduled_t[j] != 0) {
-					plmn_present = 1;
-					break;
+
+			if (cell->sfalloc_dl[sw_sf].rbs_alloc[i] != RB_NOT_SCHED &&
+				cell->sfalloc_dl[sw_sf].rbs_alloc[i] != RB_RESERVED) {
+
+				plmn_present = 0;
+				for (j = 0; j < MAX_TENANTS; j++) {
+					if (cell->sfalloc_dl[sw_sf].rbs_alloc[i] == scheduled_t[j]
+										&&
+						scheduled_t[j] != 0) {
+						plmn_present = 1;
+						break;
+					}
 				}
-			}
-			if (plmn_present == 0) {
-				scheduled_t[t] = cell->sfalloc_dl[sw_sf].rbs_alloc[i];
-				t++;
+				if (plmn_present == 0) {
+					scheduled_t[t] = cell->sfalloc_dl[sw_sf].rbs_alloc[i];
+					t++;
+				}
 			}
 		}
 	}
 
 	/* Call the UE scheduler and perform RBs allocation for the UEs of a tenant.
 	 */
-	// tn = NULL;
 
 	/**************************** LOCK ********************************/
 	pthread_spin_lock(&tenants_info_lock);
@@ -253,15 +256,16 @@ void ran_sharing_dlsch_sched (
 		/* If tenant is scheduled. */
 		if (scheduled_t[j] != 0) {
 
-			if (tenant_info_get(scheduled_t[j]) == NULL)
+			tenant = tenant_info_get(scheduled_t[j]);
+
+			if (tenant == NULL)
 				continue;
 
-			memcpy(&tn, tenant_info_get(scheduled_t[j]), sizeof(tenant_info));
-			if (tn.ue_downlink_sched == NULL)
+			if (tenant->ue_downlink_sched == NULL)
 					continue;
 
 			for (i = 0; i < NUMBER_OF_UE_MAX; i++) {
-				tn.ues_rnti[i] = NOT_A_RNTI;
+				tenant->ues_rnti[i] = NOT_A_RNTI;
 			}
 
 			/* UE count. */
@@ -276,7 +280,7 @@ void ran_sharing_dlsch_sched (
 						if (rnti == NOT_A_RNTI)
 							continue;
 
-						tn.ues_rnti[t] = rnti;
+						tenant->ues_rnti[t] = rnti;
 						t++;
 					}
 				}
@@ -331,7 +335,7 @@ void ran_sharing_dlsch_sched (
 
 
 			/* Call the UE scheduler. */
-			tn.ue_downlink_sched(
+			tenant->ue_downlink_sched(
 									scheduled_t[j],
 									m_id,
 									f,
@@ -345,7 +349,7 @@ void ran_sharing_dlsch_sched (
 									eNB_ran_sh.sched_window_dl,
 									eNB_ran_sh.cell,
 									// tenant_ues
-									tn.ues_rnti
+									tenant->ues_rnti
 								 );
 		}
 	}
@@ -851,14 +855,29 @@ int ran_sharing_sched_init (
 			printf("\n SW %d\n", sf);
 
 			for (rb = 0; rb < cell->sfalloc_dl[sf].n_rbs_alloc; rb++) {
+				if ((sf == 0 || sf == 5) && rb < 8) {
+
+					cell->sfalloc_dl[sf].rbs_alloc[rb] = -1;
+#if 1
+					printf("%d\t", cell->sfalloc_dl[sf].rbs_alloc[rb]);
+#endif
+					continue;
+				}
+				if (sf == 5 && rb > 20) {
+					cell->sfalloc_dl[sf].rbs_alloc[rb] = -1;
+#if 1
+					printf("%d\t", cell->sfalloc_dl[sf].rbs_alloc[rb]);
+#endif
+					continue;
+				}
 				if (rb < 13) {
-					cell->sfalloc_dl[sf].rbs_alloc[rb]= 0x20893F;
+					cell->sfalloc_dl[sf].rbs_alloc[rb]= 0;
 				}
 				else {
 					cell->sfalloc_dl[sf].rbs_alloc[rb]= 0x22293F;
 				}
 #if 1
-				printf("%lx\t", cell->sfalloc_dl[sf].rbs_alloc[rb]);
+				printf("%d\t", cell->sfalloc_dl[sf].rbs_alloc[rb]);
 #endif
 			}
 		}
@@ -912,20 +931,20 @@ int ran_sharing_sched_init (
 	}
 
 	t_ues_id[0].plmn_id = 0x22293F;
-	t_ues_id[0].ue_ids[0] = 1;
-	t_ues_id[0].ue_ids[1] = 3;
-	t_ues_id[0].ue_ids[2] = 5;
-	// t_ues_id[0].ue_ids[0] = 0;
-	// t_ues_id[0].ue_ids[1] = 2;
-	// t_ues_id[0].ue_ids[2] = 4;
+	// t_ues_id[0].ue_ids[0] = 1;
+	// t_ues_id[0].ue_ids[1] = 3;
+	// t_ues_id[0].ue_ids[2] = 5;
+	t_ues_id[0].ue_ids[0] = 0;
+	t_ues_id[0].ue_ids[1] = 2;
+	t_ues_id[0].ue_ids[2] = 4;
 
 	t_ues_id[1].plmn_id = 0x20893F;
-	t_ues_id[1].ue_ids[0] = 0;
-	t_ues_id[1].ue_ids[1] = 2;
-	t_ues_id[1].ue_ids[2] = 4;
-	// t_ues_id[1].ue_ids[0] = 1;
-	// t_ues_id[1].ue_ids[1] = 3;
-	// t_ues_id[1].ue_ids[2] = 5;
+	// t_ues_id[1].ue_ids[0] = 0;
+	// t_ues_id[1].ue_ids[1] = 2;
+	// t_ues_id[1].ue_ids[2] = 4;
+	t_ues_id[1].ue_ids[0] = 1;
+	t_ues_id[1].ue_ids[1] = 3;
+	t_ues_id[1].ue_ids[2] = 5;
 
 	return 0;
 }
