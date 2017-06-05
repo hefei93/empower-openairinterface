@@ -43,7 +43,7 @@
 
 #include <emage/pb/ran_sharing.pb-c.h>
 
-// #include "emoai_ran_sharing_ctrl.h"
+#include "emoai_ran_sharing_ctrl.h"
 
 /* Definition of RBs allocation for UEs over a subframe.
  */

@@ -70,6 +70,9 @@ void ran_sharing_dlsch_sched (
 	struct rrc_eNB_ue_context_s *rrc_ue_ctxt;
 #endif
 
+	/**************************** LOCK ************************************/
+	pthread_spin_lock(&tenants_info_lock);
+
 	/* MIMO indicator. */
 	unsigned char MIMO_mode_indicator[MAX_NUM_CCs][N_RBG_MAX];
 
@@ -113,8 +116,6 @@ void ran_sharing_dlsch_sched (
 		 * scheduling window.
 		*/
 		if (eNB_ran_sh.dl_sw_sf == 0) {
-			/**************************** LOCK ********************************/
-			pthread_spin_lock(&tenants_info_lock);
 
 			for (i = 0; i < MAX_TENANTS; i++) {
 
@@ -140,8 +141,6 @@ void ran_sharing_dlsch_sched (
 				}
 			}
 
-			pthread_spin_unlock(&tenants_info_lock);
-			/************************** UNLOCK ********************************/
 		}
 
 		/* Clear RBs allocation for the tenants. */
@@ -156,10 +155,6 @@ void ran_sharing_dlsch_sched (
 		}
 
 		tenant = NULL;
-
-		/**************************** LOCK ************************************/
-		pthread_spin_lock(&tenants_info_lock);
-
 		/* Loop over tenants and assign RBs to tenants. */
 		for (i = 0; i < MAX_TENANTS; i++) {
 
@@ -212,9 +207,6 @@ void ran_sharing_dlsch_sched (
 			}
 		}
 
-		pthread_spin_unlock(&tenants_info_lock);
-		/************************** UNLOCK ************************************/
-
 /************* Tenant scheduler implementation logic end. *********************/
 	}
 
@@ -248,9 +240,6 @@ void ran_sharing_dlsch_sched (
 	/* Call the UE scheduler and perform RBs allocation for the UEs of a tenant.
 	 */
 
-	/**************************** LOCK ********************************/
-	pthread_spin_lock(&tenants_info_lock);
-
 	/* Loop over all the scheduled tenants. */
 	for (j = 0; j < MAX_TENANTS; j++) {
 		/* If tenant is scheduled. */
@@ -262,7 +251,7 @@ void ran_sharing_dlsch_sched (
 				continue;
 
 			if (tenant->ue_downlink_sched == NULL)
-					continue;
+				continue;
 
 			for (i = 0; i < NUMBER_OF_UE_MAX; i++) {
 				tenant->ues_rnti[i] = NOT_A_RNTI;
@@ -273,6 +262,9 @@ void ran_sharing_dlsch_sched (
 			for (i = 0; i < MAX_TENANTS; i++) {
 				if (scheduled_t[j] == t_ues_id[i].plmn_id) {
 					for (n = 0; n < NUMBER_OF_UE_MAX; n++) {
+						if (t_ues_id[i].ue_ids[n] == -1)
+							continue;
+
 						if (UE_list->active[t_ues_id[i].ue_ids[n]] != TRUE)
 							continue;
 
@@ -365,9 +357,6 @@ void ran_sharing_dlsch_sched (
 	}
 #endif
 
-	pthread_spin_unlock(&tenants_info_lock);
-	/************************** UNLOCK ********************************/
-
 	// ran_sharing_dlsch_sort_UEs (m_id);
 	sort_UEs (m_id, f, sf);
 
@@ -388,6 +377,8 @@ void ran_sharing_dlsch_sched (
 									eNB_ran_sh.cell
 								 );
 
+	pthread_spin_unlock(&tenants_info_lock);
+	/************************** UNLOCK ************************************/
 }
 
 // void ran_sharing_dlsch_sort_UEs (
@@ -874,7 +865,7 @@ int ran_sharing_sched_init (
 					cell->sfalloc_dl[sf].rbs_alloc[rb]= 0;
 				}
 				else {
-					cell->sfalloc_dl[sf].rbs_alloc[rb]= 0x22293F;
+					cell->sfalloc_dl[sf].rbs_alloc[rb]= 0x20893F;
 				}
 #if 1
 				printf("%d\t", cell->sfalloc_dl[sf].rbs_alloc[rb]);
@@ -931,20 +922,20 @@ int ran_sharing_sched_init (
 	}
 
 	t_ues_id[0].plmn_id = 0x22293F;
-	// t_ues_id[0].ue_ids[0] = 1;
-	// t_ues_id[0].ue_ids[1] = 3;
-	// t_ues_id[0].ue_ids[2] = 5;
-	t_ues_id[0].ue_ids[0] = 0;
-	t_ues_id[0].ue_ids[1] = 2;
-	t_ues_id[0].ue_ids[2] = 4;
+	t_ues_id[0].ue_ids[0] = 1;
+	t_ues_id[0].ue_ids[1] = 3;
+	t_ues_id[0].ue_ids[2] = 5;
+	// t_ues_id[0].ue_ids[0] = 0;
+	// t_ues_id[0].ue_ids[1] = 2;
+	// t_ues_id[0].ue_ids[2] = 4;
 
 	t_ues_id[1].plmn_id = 0x20893F;
-	// t_ues_id[1].ue_ids[0] = 0;
-	// t_ues_id[1].ue_ids[1] = 2;
-	// t_ues_id[1].ue_ids[2] = 4;
-	t_ues_id[1].ue_ids[0] = 1;
-	t_ues_id[1].ue_ids[1] = 3;
-	t_ues_id[1].ue_ids[2] = 5;
+	t_ues_id[1].ue_ids[0] = 0;
+	t_ues_id[1].ue_ids[1] = 2;
+	t_ues_id[1].ue_ids[2] = 4;
+	// t_ues_id[1].ue_ids[0] = 1;
+	// t_ues_id[1].ue_ids[1] = 3;
+	// t_ues_id[1].ue_ids[2] = 5;
 
 	return 0;
 }
