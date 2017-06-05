@@ -22,6 +22,8 @@
 
 #include "ran_sharing_defs.h"
 #include "ran_sharing_extern.h"
+#include "ran_sharing_sched.h"
+#include "tenant.h"
 
 #include "RRC/LITE/extern.h"
 #include "RRC/LITE/rrc_eNB_UE_context.h"
@@ -31,11 +33,9 @@ int emoai_ran_sharing_ctrl (
 	EmageMsg ** reply,
 	unsigned int trigger_id) {
 
-	int feas_flag, cc_id, n, id;
-	tenant_info *t_i, *t, *tenant = NULL;
+	int sf, n, id, rb;
+	tenant_info *t_i = NULL;
 	cell_ran_sharing *cell;
-
-	LTE_DL_FRAME_PARMS *frame_parms[MAX_NUM_CCs] = {0};
 
 	RanSharingCtrlReq *req;
 	RanShareReqStatus req_status = RAN_SHARE_REQ_STATUS__RANSHARE_REQ_SUCCESS;
@@ -65,7 +65,7 @@ int emoai_ran_sharing_ctrl (
 
 		if (!req->add_t->plmn_id) {
 			req_status = RAN_SHARE_REQ_STATUS__RANSHARE_REQ_FAILURE;
-			goto error;
+			goto req_error;
 		}
 
 		uint32_t plmn_num = plmn_conv_to_uint(req->add_t->plmn_id);
@@ -76,7 +76,7 @@ int emoai_ran_sharing_ctrl (
 		}
 
 		tenant_info_add(plmn_num);
-		SIB1_update_tenant();
+		SIB1_update_tenant(DEFAULT_ENB_ID);
 
 		pthread_spin_unlock(&tenants_info_lock);
 		/************************** UNLOCK ************************************/
@@ -89,7 +89,7 @@ int emoai_ran_sharing_ctrl (
 
 		if (!req->rem_t->plmn_id) {
 			req_status = RAN_SHARE_REQ_STATUS__RANSHARE_REQ_FAILURE;
-			goto error;
+			goto req_error;
 		}
 
 		uint32_t plmn_num = plmn_conv_to_uint(req->rem_t->plmn_id);
@@ -100,7 +100,7 @@ int emoai_ran_sharing_ctrl (
 		}
 
 		tenant_info_rem(plmn_num);
-		SIB1_update_tenant();
+		SIB1_update_tenant(DEFAULT_ENB_ID);
 
 		pthread_spin_unlock(&tenants_info_lock);
 		/************************** UNLOCK ************************************/
@@ -113,7 +113,7 @@ int emoai_ran_sharing_ctrl (
 
 		if (!req->ue_sched_sel) {
 			req_status = RAN_SHARE_REQ_STATUS__RANSHARE_REQ_FAILURE;
-			goto error;
+			goto req_error;
 		}
 
 		uint32_t plmn_num = plmn_conv_to_uint(req->ue_sched_sel->plmn_id);
@@ -136,7 +136,7 @@ int emoai_ran_sharing_ctrl (
 
 		if (!req->t_rbs_req) {
 			req_status = RAN_SHARE_REQ_STATUS__RANSHARE_REQ_FAILURE;
-			goto error;
+			goto req_error;
 		}
 
 		uint32_t plmn_num = plmn_conv_to_uint(req->t_rbs_req->plmn_id);
@@ -147,7 +147,7 @@ int emoai_ran_sharing_ctrl (
 		}
 
 		t_i = tenant_info_get(plmn_num);
-
+		/* Something is wrong here check the condition */
 		for (n = 0; n < req->t_rbs_req->n_rbs_dl; n++) {
 			id = pci_to_cc_id_dl(
 					DEFAULT_ENB_ID,
@@ -161,10 +161,11 @@ int emoai_ran_sharing_ctrl (
 			/* Requested RBs cannot be allocated. */
 			if (cell->avail_rbs_dl - req->t_rbs_req->rbs_dl[n]->num_rbs < 0) {
 				req_status = RAN_SHARE_REQ_STATUS__RANSHARE_REQ_FAILURE;
-				goto error;
+				goto req_error;
 			}
 		}
 
+		/* For Uplink, frame parameters are assumed to be same as DL. */
 		for (n = 0; n < req->t_rbs_req->n_rbs_ul; n++) {
 			id = pci_to_cc_id_dl(
 					DEFAULT_ENB_ID,
@@ -178,7 +179,7 @@ int emoai_ran_sharing_ctrl (
 			/* Requested RBs cannot be allocated. */
 			if (cell->avail_rbs_ul - req->t_rbs_req->rbs_ul[n]->num_rbs < 0) {
 				req_status = RAN_SHARE_REQ_STATUS__RANSHARE_REQ_FAILURE;
-				goto error;
+				goto req_error;
 			}
 		}
 
@@ -188,265 +189,74 @@ int emoai_ran_sharing_ctrl (
 		/************************** UNLOCK ************************************/
 	}
 
-	if (req->tenant_sched == NULL && req->tenant == NULL) {
-		goto req_error;
-	}
-
-	/* Check for the existence of Tenant scheduler. */
-	TenantScheduler *tenant_sched;
-
-	if (req->tenant != NULL) {
+	/* Update type of tenant scheduling. */
+	if (req->ctrl_req_case == RAN_SHARING_CTRL_REQ__CTRL_REQ_T_SCHED_SEL) {
 		/**************************** LOCK ************************************/
 		pthread_spin_lock(&tenants_info_lock);
 
-		/* Get the tenant information if exists. */
-		t_i = tenant_info_get(req->tenant->plmn_id);
+		/* Scheduling schemes that are not supported. */
+		if (req->t_sched_sel->sched_types_case ==
+						TENANTS_SCHED_SELECT__SCHED_TYPES_MIXED_SCHED_DL ||
+			req->t_sched_sel->sched_types_case ==
+							TENANTS_SCHED_SELECT__SCHED_TYPES_MIXED_SCHED_UL ||
+			req->t_sched_sel->sched_types_case ==
+						TENANTS_SCHED_SELECT__SCHED_TYPES_STATIC_SCHED_UL ||
+			req->t_sched_sel->sched_types_case ==
+						TENANTS_SCHED_SELECT__SCHED_TYPES_DYNM_SCHED_UL ||
+			req->t_sched_sel->sched_types_case ==
+						TENANTS_SCHED_SELECT__SCHED_TYPES_DYNM_SCHED_DL) {
+			req_status = RAN_SHARE_REQ_STATUS__RANSHARE_REQ_UNSUPPORTED;
+			goto req_error;
+		}
 
-		/* Calculate the sum of RBs used by current tenants in DL. */
-		for (i = 0; i < MAX_TENANTS; i++) {
+		if (req->t_sched_sel->sched_types_case ==
+							TENANTS_SCHED_SELECT__SCHED_TYPES_STATIC_SCHED_DL) {
 
-			if (strcmp(eNB_ran_sh.tenants[i].plmn_id, "") == 0)
-				continue;
+			StaticTenantsSched *sched = req->t_sched_sel->static_sched_dl;
 
-			tenant = &eNB_ran_sh.tenants[i];
-			/* Loop over all the CCs. */
-			for (cc_id = 0; cc_id < MAX_NUM_CCs; cc_id++) {
-				/* Downlink. */
-				used_dl_rbs_over_frame[cc_id] +=
-					tenant->dl_ue_sched_ctrl_info->num_rbs_every_frame[cc_id];
-				/* Uplink. */
-				used_ul_rbs_over_frame[cc_id] +=
-					tenant->ul_ue_sched_ctrl_info->num_rbs_every_frame[cc_id];
+			for (n = 0; n < sched->n_cell; n++) {
+				id = pci_to_cc_id_dl(
+						DEFAULT_ENB_ID,
+						sched->cell[n]->phys_cell_id);
+				/* Invalid CC Id. */
+				if (id < 0)
+					continue;
+
+				cell = &eNB_ran_sh.cell[id];
+
+				/* Scheduling window are not the same. */
+				if (sched->cell[n]->n_sf != eNB_ran_sh.sched_window_dl) {
+					req_status = RAN_SHARE_REQ_STATUS__RANSHARE_REQ_FAILURE;
+					goto req_error;
+				}
+
+				for (sf = 0; sf < eNB_ran_sh.sched_window_dl; sf++) {
+					for (rb = 0; rb < cell->sfalloc_dl[sf].n_rbs_alloc; rb++) {
+						cell->sfalloc_dl[sf].rbs_alloc[rb] = (int)
+						plmn_conv_to_uint(sched->cell[n]->sf[sf]->rbs_alloc[rb]);
+					}
+				}
 			}
 		}
 
 		pthread_spin_unlock(&tenants_info_lock);
 		/************************** UNLOCK ************************************/
-
-		/* Initialize frame parameters of eNB on all Component Carriers (CCs).
-		*/
-		for (cc_id = 0; cc_id < MAX_NUM_CCs; cc_id++) {
-
-			// if (mbsfn_flag[cc_id] > 0)
-			// 	continue;
-
-			/* Load frame specific parameters for each CC. */
-			frame_parms[cc_id] =
-						mac_xface->get_lte_frame_parms(DEFAULT_ENB_ID, cc_id);
-		}
-
-		/* Adding a new Tenant. */
-		if (req->tenant->op_type == TENANT_INFO_OP_TYPE__TI_OP_ADD) {
-			if (t_i != NULL) {
-				req_status = RAN_SHARE_REQ_STATUS__RANSHARE_REQ_FAILURE;
-				goto req_error;
-			}
-			/* Feasibility check. */
-			feas_flag = 1;
-			for (cc_id = 0; cc_id < MAX_NUM_CCs; cc_id++) {
-
-				// if (mbsfn_flag[cc_id] > 0)
-				// 	continue;
-
-				if (((frame_parms[cc_id]->N_RB_DL * NUM_SF_IN_FRAME) -
-					req->tenant->downlink_ue_sched->num_rbs_every_frame[cc_id] -
-					NUM_RBS_CTRL_CH_DL - used_dl_rbs_over_frame[cc_id]) < 0) {
-					feas_flag = 0;
-					break;
-				}
-
-				eNB_ran_sh.avail_rbs_dl[cc_id] =
-					(frame_parms[cc_id]->N_RB_DL * NUM_SF_IN_FRAME) -
-					req->tenant->downlink_ue_sched->num_rbs_every_frame[cc_id] -
-					NUM_RBS_CTRL_CH_DL - used_dl_rbs_over_frame[cc_id];
-
-				if (((frame_parms[cc_id]->N_RB_UL * NUM_SF_IN_FRAME) -
-					req->tenant->uplink_ue_sched->num_rbs_every_frame[cc_id] -
-					NUM_RBS_CTRL_CH_UL - used_ul_rbs_over_frame[cc_id])
-						< 0) {
-					feas_flag = 0;
-					break;
-				}
-
-				eNB_ran_sh.avail_rbs_ul_frame[cc_id] =
-					(frame_parms[cc_id]->N_RB_UL * NUM_SF_IN_FRAME) -
-					req->tenant->uplink_ue_sched->num_rbs_every_frame[cc_id] -
-					NUM_RBS_CTRL_CH_UL - used_ul_rbs_over_frame[cc_id];
-			}
-
-			if (feas_flag == 0) {
-				req_status = RAN_SHARE_REQ_STATUS__RANSHARE_REQ_FAILURE;
-				goto req_error;
-			}
-
-			/* Call the plugin manager to check and load the UE scheduler. */
-
-			/* Add the tenant information to the tree. */
-			t = malloc(sizeof(tenant_info));
-			strcpy(t->plmn_id, req->tenant->plmn_id);
-
-			t->dl_ue_sched_ctrl_info =
-								malloc(sizeof(*req->tenant->downlink_ue_sched));
-			memcpy(t->dl_ue_sched_ctrl_info,
-				   req->tenant->downlink_ue_sched,
-				   sizeof(*req->tenant->downlink_ue_sched));
-
-			t->ul_ue_sched_ctrl_info =
-								malloc(sizeof(*req->tenant->uplink_ue_sched));
-			memcpy(t->ul_ue_sched_ctrl_info,
-				   req->tenant->uplink_ue_sched,
-				   sizeof(*req->tenant->uplink_ue_sched));
-
-			/* Looping over all Component Carriers. */
-			for (cc_id = 0; cc_id < MAX_NUM_CCs; cc_id++) {
-				t->alloc_rbs_dl_sf[cc_id] = 0;
-				t->remaining_rbs_dl[cc_id] =
-						t->dl_ue_sched_ctrl_info->num_rbs_every_frame[cc_id];
-
-				t->alloc_rbs_ul_sf[cc_id] = 0;
-				t->remaining_rbs_ul[cc_id] =
-						t->ul_ue_sched_ctrl_info->num_rbs_every_frame[cc_id];
-			}
-
-			/**************************** LOCK ********************************/
-			pthread_spin_lock(&tenants_info_lock);
-
-			tenant_info_add(t);
-
-			pthread_spin_unlock(&tenants_info_lock);
-			/************************** UNLOCK ********************************/
-
-			/* Modify SIB1 to accomodate new tenant. */
-			SIB1_update_tenant (DEFAULT_ENB_ID);
-
-		}
-		/* Modifying an existing tenant information. */
-		else if (req->tenant->op_type == TENANT_INFO_OP_TYPE__TI_OP_MOD) {
-			if (t_i == NULL) {
-				req_status = RAN_SHARE_REQ_STATUS__RANSHARE_REQ_FAILURE;
-				goto req_error;
-			}
-			/* Feasibility check. */
-			feas_flag = 1;
-			int tenant_num_rbs_dl_prev[MAX_NUM_CCs];
-			int tenant_num_rbs_ul_prev[MAX_NUM_CCs];
-
-			for (cc_id = 0; cc_id < MAX_NUM_CCs; cc_id++) {
-				tenant_num_rbs_dl_prev[cc_id] =
-						t_i->dl_ue_sched_ctrl_info->num_rbs_every_frame[cc_id];
-
-				tenant_num_rbs_ul_prev[cc_id] =
-						t_i->ul_ue_sched_ctrl_info->num_rbs_every_frame[cc_id];
-			}
-
-			for (cc_id = 0; cc_id < MAX_NUM_CCs; cc_id++) {
-
-				// if (mbsfn_flag[cc_id] > 0)
-				// 	continue;
-
-				if (((frame_parms[cc_id]->N_RB_DL * NUM_SF_IN_FRAME) -
-					NUM_RBS_CTRL_CH_DL -
-					req->tenant->downlink_ue_sched->num_rbs_every_frame[cc_id] -
-					(used_dl_rbs_over_frame[cc_id] -
-						tenant_num_rbs_dl_prev[cc_id])) < 0) {
-					feas_flag = 0;
-					break;
-				}
-
-				eNB_ran_sh.avail_rbs_dl[cc_id] =
-					(frame_parms[cc_id]->N_RB_DL * NUM_SF_IN_FRAME) -
-					NUM_RBS_CTRL_CH_DL -
-					req->tenant->downlink_ue_sched->num_rbs_every_frame[cc_id] -
-					(used_dl_rbs_over_frame[cc_id] -
-						tenant_num_rbs_dl_prev[cc_id]);
-
-				if (((frame_parms[cc_id]->N_RB_UL * NUM_SF_IN_FRAME) -
-					NUM_RBS_CTRL_CH_UL -
-					req->tenant->uplink_ue_sched->num_rbs_every_frame[cc_id] -
-					(used_ul_rbs_over_frame[cc_id] -
-						tenant_num_rbs_ul_prev[cc_id])) < 0) {
-					feas_flag = 0;
-					break;
-				}
-
-				eNB_ran_sh.avail_rbs_ul_frame[cc_id] =
-					(frame_parms[cc_id]->N_RB_UL * NUM_SF_IN_FRAME) -
-					NUM_RBS_CTRL_CH_UL -
-					req->tenant->uplink_ue_sched->num_rbs_every_frame[cc_id] -
-					(used_ul_rbs_over_frame[cc_id] -
-						tenant_num_rbs_ul_prev[cc_id]);
-			}
-
-			if (feas_flag == 0) {
-				req_status = RAN_SHARE_REQ_STATUS__RANSHARE_REQ_FAILURE;
-				goto req_error;
-			}
-
-			/**************************** LOCK ********************************/
-			pthread_spin_lock(&tenants_info_lock);
-
-			strcpy(t_i->plmn_id, req->tenant->plmn_id);
-
-			ue_scheduler__free_unpacked(t_i->dl_ue_sched_ctrl_info, 0);
-			ue_scheduler__free_unpacked(t_i->ul_ue_sched_ctrl_info, 0);
-
-			/* Call the plugin manager to check and load the UE scheduler. */
-
-			t_i->dl_ue_sched_ctrl_info =
-								malloc(sizeof(*req->tenant->downlink_ue_sched));
-			memcpy(t_i->dl_ue_sched_ctrl_info,
-				   req->tenant->downlink_ue_sched,
-				   sizeof(*req->tenant->downlink_ue_sched));
-
-			t_i->ul_ue_sched_ctrl_info =
-								malloc(sizeof(*req->tenant->uplink_ue_sched));
-			memcpy(t_i->ul_ue_sched_ctrl_info,
-				   req->tenant->uplink_ue_sched,
-				   sizeof(*req->tenant->uplink_ue_sched));
-
-			/* Looping over all Component Carriers. */
-			for (cc_id = 0; cc_id < MAX_NUM_CCs; cc_id++) {
-				t_i->alloc_rbs_dl_sf[cc_id] = 0;
-				t_i->remaining_rbs_dl[cc_id] =
-						t_i->dl_ue_sched_ctrl_info->num_rbs_every_frame[cc_id];
-
-				t_i->alloc_rbs_ul_sf[cc_id] = 0;
-				t_i->remaining_rbs_ul[cc_id] =
-						t_i->ul_ue_sched_ctrl_info->num_rbs_every_frame[cc_id];
-			}
-
-			pthread_spin_unlock(&tenants_info_lock);
-			/************************** UNLOCK ********************************/
-		}
-		/* Deleting an existing tenant. */
-		else if (req->tenant->op_type == TENANT_INFO_OP_TYPE__TI_OP_DEL) {
-			if (t_i == NULL) {
-				req_status = RAN_SHARE_REQ_STATUS__RANSHARE_REQ_FAILURE;
-				goto req_error;
-			}
-
-			for (cc_id = 0; cc_id < MAX_NUM_CCs; cc_id++) {
-				eNB_ran_sh.avail_rbs_dl[cc_id] -=
-						t_i->dl_ue_sched_ctrl_info->num_rbs_every_frame[cc_id];
-
-				eNB_ran_sh.avail_rbs_ul_frame[cc_id] -=
-						t_i->ul_ue_sched_ctrl_info->num_rbs_every_frame[cc_id];
-			}
-
-			/* Modify SIB1 to represent deletion of a tenant. */
-			SIB1_update_tenant(DEFAULT_ENB_ID);
-
-			/**************************** LOCK ********************************/
-			pthread_spin_lock(&tenants_info_lock);
-
-			tenant_info_rem(t_i);
-
-			pthread_spin_unlock(&tenants_info_lock);
-			/************************** UNLOCK ********************************/
-		}
 	}
 
+	/* Update schedulign window. */
+	if (req->ctrl_req_case == RAN_SHARING_CTRL_REQ__CTRL_REQ_MOD_SCHED_WINDOW) {
+
+		req_status = RAN_SHARE_REQ_STATUS__RANSHARE_REQ_UNSUPPORTED;
+		goto req_error;
+	}
+
+	goto no_error;
+
 req_error:
+	pthread_spin_unlock(&tenants_info_lock);
+	/************************** UNLOCK ************************************/
+
+no_error:
 	/* Set the request status. Success or failure. */
 	repl->status = req_status;
 	/* Attach the RAN sharing control reply message to RAN sharing control
@@ -530,13 +340,23 @@ int SIB1_update_tenant (
 		/* Update the SIB1 PLMN ID list with existing tenants. */
 		for (i = 0; i < MAX_TENANTS; i++) {
 
-			if (strcmp(eNB_ran_sh.tenants[i].plmn_id, "") == 0)
+			if (eNB_ran_sh.tenants[i].plmn_id == 0)
 				continue;
 
 			tenant = &eNB_ran_sh.tenants[i];
-
+			/* Tenant PLMN ID. Conversion to string. */
 			char plmn[MAX_PLMN_LEN_P_NULL] = {0};
-			strcpy(plmn, tenant->plmn_id);
+			sprintf(plmn, "%x", tenant->plmn_id);
+
+			for (int i = 0; i < strlen(plmn) - 1; i++) {
+				if (plmn[i] == 'F' || plmn[i] == 'f')
+					plmn[i] = '0';
+			}
+
+			if (plmn[strlen(plmn) - 1] == 'F' ||
+				plmn[strlen(plmn) - 1] == 'f') {
+				plmn[strlen(plmn) - 1] = '\0';
+			}
 
 			if ((strlen(plmn) < 5) || (strlen(plmn) > 6))
 				return -1;
