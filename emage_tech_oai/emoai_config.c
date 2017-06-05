@@ -1105,6 +1105,8 @@ int emoai_eNB_cells_report (EmageMsg *request, EmageMsg **reply) {
 	if (request->event_types_case == EMAGE_MSG__EVENT_TYPES_SE) {
 		/* Its a single event request. */
 		req = request->se->menb_cells->req;
+	} else if (request->event_types_case == EMAGE_MSG__EVENT_TYPES_SCHE) {
+		req = request->sche->menb_cells->req;
 	} else {
 		return -1;
 	}
@@ -1214,6 +1216,16 @@ int emoai_eNB_cells_report (EmageMsg *request, EmageMsg **reply) {
 		se->events_case = SINGLE_EVENT__EVENTS_M_ENB_CELLS;
 		se->menb_cells = menb_cells;
 		(*reply)->se = se;
+	} else if (request->event_types_case == EMAGE_MSG__EVENT_TYPES_SCHE) {
+		ScheduleEvent *sche = malloc(sizeof(ScheduleEvent));
+		schedule_event__init(sche);
+
+		/* Fill the schedule event message. */
+		sche->events_case = SCHEDULE_EVENT__EVENTS_M_ENB_CELLS;
+		sche->menb_cells = menb_cells;
+		sche->has_interval = 1;
+		sche->interval = request->sche->interval;
+		(*reply)->sche = sche;
 	} else {
 		return -1;
 	}
