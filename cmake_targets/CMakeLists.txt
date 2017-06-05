@@ -1802,7 +1802,7 @@ if (${RAN_SHARING_FLAG})
   add_library(RAN_SHARING
     ${RAN_SHARING_CORE_DIR}/ran_sharing_sched.c
     ${RAN_SHARING_CORE_DIR}/tenant.c
-    # ${RAN_SHARING_CORE_DIR}/emoai_ran_sharing_ctrl.c
+    ${RAN_SHARING_CORE_DIR}/emoai_ran_sharing_ctrl.c
     ${RAN_SHARING_UE_SCHED_DIR}/rr.c
 
   )
