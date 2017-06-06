@@ -597,12 +597,12 @@ void ran_sharing_dlsch_sched_reset (
 				j < frame_parms[cc_id]->N_RB_DL && rbs < RBGsize;
 				j++) {
 
-				// if (cell[cc_id].sfalloc_dl[sw_sf].rbs_alloc[j] ==
-				// 												RB_RESERVED) {
-				// 	cell[cc_id].sfalloc_dl[sw_sf].rbs_alloc[j] = RB_NOT_SCHED;
-				// 	cell[cc_id].sfalloc_dl_ue[sw_sf].rbs_alloc[j] =
-				// 												RB_NOT_SCHED;
-				// }
+				if (cell[cc_id].sfalloc_dl[sw_sf].rbs_alloc[j] ==
+																RB_RESERVED) {
+					cell[cc_id].sfalloc_dl[sw_sf].rbs_alloc[j] = RB_NOT_SCHED;
+					cell[cc_id].sfalloc_dl_ue[sw_sf].rbs_alloc[j] =
+																RB_NOT_SCHED;
+				}
 
 			#ifdef SF05_LIMIT
 				/* For avoiding 6+ PRBs around DC in subframe 0-5. */
@@ -776,8 +776,14 @@ uint32_t plmn_conv_to_uint (
 	char plmn_tmp[MAX_PLMN_LEN_P_NULL] = {0};
 	strcpy(plmn_tmp, plmn_id);
 
-	if (strlen(plmn_tmp) < 5)
+	if (strcmp(plmn_tmp, "-1") == 0)
 		return -1;
+
+	if (strcmp(plmn_tmp, "0") == 0)
+		return 0;
+
+	if (strlen(plmn_tmp) < 5)
+		return 0;
 
 	if (strlen(plmn_tmp) == 5) {
 		plmn_tmp[MAX_PLMN_LEN_P_NULL - 2] = 'F';
