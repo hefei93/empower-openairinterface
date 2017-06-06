@@ -24,8 +24,7 @@
 /* Handles RAN sharing requests from the controller. */
 int emoai_ran_sharing_ctrl (
 	EmageMsg * request,
-	EmageMsg ** reply,
-	unsigned int trigger_id);
+	EmageMsg ** reply);
 
 /* Handles updating of SIB1 information when a tenant is added/deleted. */
 int SIB1_update_tenant (

@@ -30,8 +30,7 @@
 
 int emoai_ran_sharing_ctrl (
 	EmageMsg * request,
-	EmageMsg ** reply,
-	unsigned int trigger_id) {
+	EmageMsg ** reply) {
 
 	int sf, n, id, rb;
 	tenant_info *t_i = NULL;
@@ -60,8 +59,6 @@ int emoai_ran_sharing_ctrl (
 
 	/* Adding a new tenant. */
 	if (req->ctrl_req_case == RAN_SHARING_CTRL_REQ__CTRL_REQ_ADD_T) {
-		/**************************** LOCK ************************************/
-		pthread_spin_lock(&tenants_info_lock);
 
 		if (!req->add_t->plmn_id) {
 			req_status = RAN_SHARE_REQ_STATUS__RANSHARE_REQ_FAILURE;
@@ -75,17 +72,19 @@ int emoai_ran_sharing_ctrl (
 			goto req_error;
 		}
 
+		/**************************** LOCK ************************************/
+		pthread_spin_lock(&tenants_info_lock);
+
 		tenant_info_add(plmn_num);
-		SIB1_update_tenant(DEFAULT_ENB_ID);
 
 		pthread_spin_unlock(&tenants_info_lock);
 		/************************** UNLOCK ************************************/
+
+		SIB1_update_tenant(DEFAULT_ENB_ID);
 	}
 
 	/* Remove a tenant. */
 	if (req->ctrl_req_case == RAN_SHARING_CTRL_REQ__CTRL_REQ_REM_T) {
-		/**************************** LOCK ************************************/
-		pthread_spin_lock(&tenants_info_lock);
 
 		if (!req->rem_t->plmn_id) {
 			req_status = RAN_SHARE_REQ_STATUS__RANSHARE_REQ_FAILURE;
@@ -99,17 +98,19 @@ int emoai_ran_sharing_ctrl (
 			goto req_error;
 		}
 
+		/**************************** LOCK ************************************/
+		pthread_spin_lock(&tenants_info_lock);
+
 		tenant_info_rem(plmn_num);
-		SIB1_update_tenant(DEFAULT_ENB_ID);
 
 		pthread_spin_unlock(&tenants_info_lock);
 		/************************** UNLOCK ************************************/
+
+		SIB1_update_tenant(DEFAULT_ENB_ID);
 	}
 
 	/* Update UE scheduler selected by the tenant. */
 	if (req->ctrl_req_case == RAN_SHARING_CTRL_REQ__CTRL_REQ_UE_SCHED_SEL) {
-		/**************************** LOCK ************************************/
-		pthread_spin_lock(&tenants_info_lock);
 
 		if (!req->ue_sched_sel) {
 			req_status = RAN_SHARE_REQ_STATUS__RANSHARE_REQ_FAILURE;
@@ -123,6 +124,9 @@ int emoai_ran_sharing_ctrl (
 			goto req_error;
 		}
 
+		/**************************** LOCK ************************************/
+		pthread_spin_lock(&tenants_info_lock);
+
 		tenant_info_update(plmn_num, NULL, req->ue_sched_sel);
 
 		pthread_spin_unlock(&tenants_info_lock);
@@ -131,8 +135,6 @@ int emoai_ran_sharing_ctrl (
 
 	/* Update number of RBs requested from a tenant. */
 	if (req->ctrl_req_case == RAN_SHARING_CTRL_REQ__CTRL_REQ_T_RBS_REQ) {
-		/**************************** LOCK ************************************/
-		pthread_spin_lock(&tenants_info_lock);
 
 		if (!req->t_rbs_req) {
 			req_status = RAN_SHARE_REQ_STATUS__RANSHARE_REQ_FAILURE;
@@ -183,6 +185,9 @@ int emoai_ran_sharing_ctrl (
 			}
 		}
 
+		/**************************** LOCK ************************************/
+		pthread_spin_lock(&tenants_info_lock);
+
 		tenant_info_update(plmn_num, req->t_rbs_req, NULL);
 
 		pthread_spin_unlock(&tenants_info_lock);
@@ -191,8 +196,6 @@ int emoai_ran_sharing_ctrl (
 
 	/* Update type of tenant scheduling. */
 	if (req->ctrl_req_case == RAN_SHARING_CTRL_REQ__CTRL_REQ_T_SCHED_SEL) {
-		/**************************** LOCK ************************************/
-		pthread_spin_lock(&tenants_info_lock);
 
 		/* Scheduling schemes that are not supported. */
 		if (req->t_sched_sel->sched_types_case ==
@@ -222,25 +225,45 @@ int emoai_ran_sharing_ctrl (
 				if (id < 0)
 					continue;
 
-				cell = &eNB_ran_sh.cell[id];
-
 				/* Scheduling window are not the same. */
 				if (sched->cell[n]->n_sf != eNB_ran_sh.sched_window_dl) {
 					req_status = RAN_SHARE_REQ_STATUS__RANSHARE_REQ_FAILURE;
 					goto req_error;
 				}
 
+				t_RBs_alloc_over_sf *sfalloc_dl =
+											malloc(eNB_ran_sh.sched_window_dl *
+												sizeof(t_RBs_alloc_over_sf));
+
 				for (sf = 0; sf < eNB_ran_sh.sched_window_dl; sf++) {
-					for (rb = 0; rb < cell->sfalloc_dl[sf].n_rbs_alloc; rb++) {
-						cell->sfalloc_dl[sf].rbs_alloc[rb] = (int)
+
+					sfalloc_dl[sf].n_rbs_alloc =
+											sched->cell[n]->sf[sf]->n_rbs_alloc;
+					sfalloc_dl[sf].rbs_alloc =
+								calloc(sfalloc_dl[sf].n_rbs_alloc, sizeof(int));
+
+					for (rb = 0; rb < sfalloc_dl[sf].n_rbs_alloc; rb++) {
+						sfalloc_dl[sf].rbs_alloc[rb] = (int)
 						plmn_conv_to_uint(sched->cell[n]->sf[sf]->rbs_alloc[rb]);
 					}
 				}
+
+				/**************************** LOCK ****************************/
+				pthread_spin_lock(&tenants_info_lock);
+
+				cell = &eNB_ran_sh.cell[id];
+
+				for (sf = 0; sf < eNB_ran_sh.sched_window_dl; sf++) {
+					free(cell->sfalloc_dl[sf].rbs_alloc);
+				}
+				free(cell->sfalloc_dl);
+
+				cell->sfalloc_dl = sfalloc_dl;
+
+				pthread_spin_unlock(&tenants_info_lock);
+				/************************** UNLOCK ****************************/
 			}
 		}
-
-		pthread_spin_unlock(&tenants_info_lock);
-		/************************** UNLOCK ************************************/
 	}
 
 	/* Update schedulign window. */
@@ -250,13 +273,7 @@ int emoai_ran_sharing_ctrl (
 		goto req_error;
 	}
 
-	goto no_error;
-
 req_error:
-	pthread_spin_unlock(&tenants_info_lock);
-	/************************** UNLOCK ************************************/
-
-no_error:
 	/* Set the request status. Success or failure. */
 	repl->status = req_status;
 	/* Attach the RAN sharing control reply message to RAN sharing control
