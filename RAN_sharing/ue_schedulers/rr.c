@@ -13,7 +13,7 @@
  * limitations under the License.
  */
 
-/* Implementation of Round-Robin scheduling of radio resources in an eNB.
+/* Implementation of Round-Robin scheduling of radio resources to UEs in an eNB.
  */
 
 #include "rr.h"

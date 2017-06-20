@@ -22,6 +22,7 @@
 #include "ran_sharing_extern.h"
 #include "tenant.h"
 #include "rr.h"
+#include "cqi.h"
 
 #include "emoai.h"
 
@@ -808,11 +809,36 @@ int ran_sharing_sched_init (
 
 	int cc_id, rb, sf, i, t;
 
-	eNB_ran_sh.tenants[0].plmn_id = 0x22293F;
-	eNB_ran_sh.tenants[0].ue_downlink_sched = assign_rbs_RR_DL;
+	/* Initially all the RBs belongs to tenant owing the eNB. */
 
-	eNB_ran_sh.tenants[1].plmn_id = 0x20893F;
+	const Enb_properties_array_t *enb_properties = enb_config_get();
+
+	char plmn_tmp[MAX_PLMN_LEN_P_NULL] = "";
+	char mcc_str[4], mnc_str[4];
+
+	sprintf(mcc_str, "%d", enb_properties->properties[m_id]->mcc);
+	sprintf(mnc_str, "%d", enb_properties->properties[m_id]->mnc);
+
+	strcat(plmn_tmp, mcc_str);
+	strcat(plmn_tmp, mnc_str);
+
+	if (enb_properties->properties[m_id]->mnc_digit_length == 2) {
+		plmn_tmp[MAX_PLMN_LEN_P_NULL - 2] = 'F';
+		plmn_tmp[MAX_PLMN_LEN_P_NULL - 1] = '\0';
+	}
+
+	eNB_ran_sh.tenants[0].plmn_id = plmn_conv_to_uint(plmn_tmp);
+	eNB_ran_sh.tenants[0].ue_downlink_sched = assign_rbs_CQI_DL;
+
+	// eNB_ran_sh.tenants[0].plmn_id = 0x22293F;
+	// eNB_ran_sh.tenants[0].ue_downlink_sched = assign_rbs_RR_DL;
+
+	// eNB_ran_sh.tenants[1].plmn_id = 0x20893F;
 	eNB_ran_sh.tenants[1].ue_downlink_sched = assign_rbs_RR_DL;
+	eNB_ran_sh.tenants[2].ue_downlink_sched = assign_rbs_RR_DL;
+	eNB_ran_sh.tenants[3].ue_downlink_sched = assign_rbs_RR_DL;
+	eNB_ran_sh.tenants[4].ue_downlink_sched = assign_rbs_RR_DL;
+	eNB_ran_sh.tenants[5].ue_downlink_sched = assign_rbs_RR_DL;
 
 	/* Static resource allocation purpose. */
 	eNB_ran_sh.tenant_sched_dl = NULL;
@@ -867,12 +893,14 @@ int ran_sharing_sched_init (
 #endif
 					continue;
 				}
-				if (rb < 13) {
-					cell->sfalloc_dl[sf].rbs_alloc[rb]= 0;
-				}
-				else {
-					cell->sfalloc_dl[sf].rbs_alloc[rb]= 0x20893F;
-				}
+				// if (rb < 13) {
+				// 	cell->sfalloc_dl[sf].rbs_alloc[rb]= 0;
+				// }
+				// else {
+				// 	// cell->sfalloc_dl[sf].rbs_alloc[rb]= 0x20893F;
+				// }
+				cell->sfalloc_dl[sf].rbs_alloc[rb] =
+												eNB_ran_sh.tenants[0].plmn_id;
 #if 1
 				printf("%d\t", cell->sfalloc_dl[sf].rbs_alloc[rb]);
 #endif
@@ -893,33 +921,6 @@ int ran_sharing_sched_init (
 	// 	{ {"22293"}, {"22293"}, {"20893"}, {"22293"}, {"22293"}, {"20893"}, {"22293"}, {"22293"}, {"22293"}, {"22293"}, {"22293"}, {"20893"}, {"22293"} }
 	// };
 
-	// char sfalloc_dl[NUM_SF_IN_FRAME][N_RBG_MAX][MAX_NUM_CCs][MAX_PLMN_LEN_P_NULL] = {
-	// 	{ {"0"}, {"0"}, {"0"}, {"0"}, {"-1"}, {"-1"}, {"-1"}, {"-1"}, {"22293"}, {"20893"}, {"22293"}, {"20893"}, {"22293"} },
-	// 	{ {"22293"}, {"20893"}, {"22293"}, {"20893"}, {"22293"}, {"20893"}, {"22293"}, {"20893"}, {"22293"}, {"20893"}, {"22293"}, {"20893"}, {"22293"} },
-	// 	{ {"22293"}, {"20893"}, {"22293"}, {"20893"}, {"22293"}, {"20893"}, {"22293"}, {"20893"}, {"22293"}, {"20893"}, {"22293"}, {"20893"}, {"22293"} },
-	// 	{ {"22293"}, {"20893"}, {"22293"}, {"20893"}, {"22293"}, {"20893"}, {"22293"}, {"20893"}, {"22293"}, {"20893"}, {"22293"}, {"20893"}, {"22293"} },
-	// 	{ {"22293"}, {"20893"}, {"22293"}, {"20893"}, {"22293"}, {"20893"}, {"22293"}, {"20893"}, {"22293"}, {"20893"}, {"22293"}, {"20893"}, {"22293"} },
-	// 	{ {"-1"}, {"-1"}, {"-1"}, {"-1"}, {"-1"}, {"-1"}, {"-1"}, {"-1"}, {"22293"}, {"20893"}, {"22293"}, {"-1"}, {"-1"} },
-	// 	{ {"22293"}, {"20893"}, {"22293"}, {"20893"}, {"22293"}, {"20893"}, {"22293"}, {"20893"}, {"22293"}, {"20893"}, {"22293"}, {"20893"}, {"22293"} },
-	// 	{ {"22293"}, {"20893"}, {"22293"}, {"20893"}, {"22293"}, {"20893"}, {"22293"}, {"20893"}, {"22293"}, {"20893"}, {"22293"}, {"20893"}, {"22293"} },
-	// 	{ {"22293"}, {"20893"}, {"22293"}, {"20893"}, {"22293"}, {"20893"}, {"22293"}, {"20893"}, {"22293"}, {"20893"}, {"22293"}, {"20893"}, {"22293"} },
-	// 	{ {"22293"}, {"20893"}, {"22293"}, {"20893"}, {"22293"}, {"20893"}, {"22293"}, {"20893"}, {"22293"}, {"20893"}, {"22293"}, {"20893"}, {"22293"} },
-	// };
-
-	/* Smiley */
-	// char sfalloc_dl[NUM_SF_IN_FRAME][N_RBG_MAX][MAX_NUM_CCs][MAX_PLMN_LEN_P_NULL] = {
-	// 	{     {"0"},     {"0"},     {"0"},     {"0"},    {"-1"},    {"-1"},    {"-1"},    {"-1"}, {"20893"}, {"20893"}, {"20893"}, {"20893"}, {"20893"} },
-	// 	{ {"20893"}, {"20893"}, {"20893"}, {"20893"}, {"20893"}, {"20893"}, {"20893"}, {"20893"}, {"20893"}, {"20893"}, {"20893"}, {"20893"}, {"20893"} },
-	// 	{ {"20893"}, {"20893"}, {"20893"}, {"20893"}, {"20893"}, {"20893"}, {"20893"}, {"20893"}, {"20893"}, {"22293"}, {"20893"}, {"22293"}, {"20893"} },
-	// 	{ {"20893"}, {"20893"}, {"20893"}, {"20893"}, {"20893"}, {"20893"}, {"20893"}, {"20893"}, {"20893"}, {"22293"}, {"20893"}, {"22293"}, {"20893"} },
-	// 	{ {"20893"}, {"20893"}, {"20893"}, {"20893"}, {"20893"}, {"20893"}, {"20893"}, {"20893"}, {"20893"}, {"20893"}, {"20893"}, {"20893"}, {"20893"} },
-	// 	{    {"-1"},    {"-1"},    {"-1"},    {"-1"},    {"-1"},    {"-1"},    {"-1"},    {"-1"}, {"20893"}, {"20893"}, {"20893"},    {"-1"},    {"-1"} },
-	// 	{ {"20893"}, {"20893"}, {"20893"}, {"20893"}, {"20893"}, {"20893"}, {"20893"}, {"20893"}, {"22293"}, {"20893"}, {"20893"}, {"20893"}, {"22293"} },
-	// 	{ {"20893"}, {"20893"}, {"20893"}, {"20893"}, {"20893"}, {"20893"}, {"20893"}, {"20893"}, {"22293"}, {"22293"}, {"20893"}, {"22293"}, {"22293"} },
-	// 	{ {"20893"}, {"20893"}, {"20893"}, {"20893"}, {"20893"}, {"20893"}, {"20893"}, {"20893"}, {"20893"}, {"22293"}, {"22293"}, {"22293"}, {"20893"} },
-	// 	{ {"20893"}, {"20893"}, {"20893"}, {"20893"}, {"20893"}, {"20893"}, {"20893"}, {"20893"}, {"20893"}, {"20893"}, {"22293"}, {"20893"}, {"20893"} }
-	// };
-
 	for (t = 0; t < MAX_TENANTS; t++) {
 		t_ues_id[t].plmn_id = 0;
 		for (i = 0; i < NUMBER_OF_UE_MAX; i++) {
@@ -928,20 +929,20 @@ int ran_sharing_sched_init (
 	}
 
 	t_ues_id[0].plmn_id = 0x22293F;
-	t_ues_id[0].ue_ids[0] = 1;
-	t_ues_id[0].ue_ids[1] = 3;
-	t_ues_id[0].ue_ids[2] = 5;
-	// t_ues_id[0].ue_ids[0] = 0;
-	// t_ues_id[0].ue_ids[1] = 2;
-	// t_ues_id[0].ue_ids[2] = 4;
+	// t_ues_id[0].ue_ids[0] = 1;
+	// t_ues_id[0].ue_ids[1] = 3;
+	// t_ues_id[0].ue_ids[2] = 5;
+	t_ues_id[0].ue_ids[0] = 0;
+	t_ues_id[0].ue_ids[1] = 2;
+	t_ues_id[0].ue_ids[2] = 4;
 
 	t_ues_id[1].plmn_id = 0x20893F;
-	t_ues_id[1].ue_ids[0] = 0;
-	t_ues_id[1].ue_ids[1] = 2;
-	t_ues_id[1].ue_ids[2] = 4;
-	// t_ues_id[1].ue_ids[0] = 1;
-	// t_ues_id[1].ue_ids[1] = 3;
-	// t_ues_id[1].ue_ids[2] = 5;
+	// t_ues_id[1].ue_ids[0] = 0;
+	// t_ues_id[1].ue_ids[1] = 2;
+	// t_ues_id[1].ue_ids[2] = 4;
+	t_ues_id[1].ue_ids[0] = 1;
+	t_ues_id[1].ue_ids[1] = 3;
+	t_ues_id[1].ue_ids[2] = 5;
 
 	return 0;
 }
