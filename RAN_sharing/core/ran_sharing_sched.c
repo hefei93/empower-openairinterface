@@ -263,6 +263,7 @@ void ran_sharing_dlsch_sched (
 			for (i = 0; i < MAX_TENANTS; i++) {
 				if (scheduled_t[j] == t_ues_id[i].plmn_id) {
 					for (n = 0; n < NUMBER_OF_UE_MAX; n++) {
+
 						if (t_ues_id[i].ue_ids[n] == -1)
 							continue;
 
@@ -358,7 +359,7 @@ void ran_sharing_dlsch_sched (
 	}
 #endif
 
-	// ran_sharing_dlsch_sort_UEs (m_id);
+	// ran_sharing_dlsch_sort_UEs (m_id, eNB_ran_sh.cell);
 	sort_UEs (m_id, f, sf);
 
 	/*
@@ -385,22 +386,36 @@ void ran_sharing_dlsch_sched (
 // void ran_sharing_dlsch_sort_UEs (
 // 	/* Module identifier. */
 // 	module_id_t m_id,
-// 	/* RB allocation for UEs of the tenant in a particular subframe. */
-// 	rnti_t rballoc_ue[N_RBG_MAX][MAX_NUM_CCs]) {
+// 	/* RAN sharing information per cell. */
+// 	cell_ran_sharing cell[MAX_NUM_CCs],
+// 	/* Subframe number maintained for scheduling window. */
+// 	uint64_t sw_sf) {
 
-// 	 RNTI value of UE.
+// 	/* RNTI value of UE. */
 // 	rnti_t rnti;
+// 	int list[NUMBER_OF_UE_MAX];
+// 	int list_size = 0, cc_id, i, t, rb;
+// 	rnti_t sched_ues[NUMBER_OF_UE_MAX] = {0};
 
 // 	UE_list_t *UE_list = &eNB_mac_inst[m_id].UE_list;
 // 	/* Initialize the UE list head to -1. */
 // 	UE_list->head = -1;
 
+// 	/* Loop over active component carriers. */
+// 	for (cc_id = 0; cc_id < MAX_NUM_CCs; cc_id++) {
+
+// 		for (rb)
+
+// 		rnti = cell[cc_id].sfalloc_dl_ue[sw_sf].rbs_alloc[rb];
+// 		if (rnti == RB_RESERVED || rnti == RB_NOT_SCHED) {
+// 			continue;
+// 		}
+// 	}
+
 
 // 	list[list_size] = i;
 // 	list_size++;
 // 	UE_list->next[list[i]] = list[i+1];
-
-
 
 // }
 
@@ -438,8 +453,6 @@ void ran_sharing_dlsch_sched_alloc (
 	rnti_t rnti;
 	/* Tenant PLMN ID. */
 	uint32_t t_plmn_id;
-
-	// printf("\n Entering ALLOC \n");
 
 	UE_list_t *UE_list = &eNB_mac_inst[m_id].UE_list;
 	UE_sched_ctrl *ue_sched_ctl;
@@ -508,8 +521,6 @@ void ran_sharing_dlsch_sched_alloc (
 			}
 		}
 	}
-
-	// printf("\n Exiting ALLOC \n");
 }
 
 void ran_sharing_dlsch_sched_reset (
@@ -808,6 +819,14 @@ int ran_sharing_sched_init (
 	module_id_t m_id) {
 
 	int cc_id, rb, sf, i, t;
+	tenant_info *tenant;
+
+	eNB_ran_sh.tenants[0].ue_downlink_sched = assign_rbs_RR_DL;
+	eNB_ran_sh.tenants[1].ue_downlink_sched = assign_rbs_RR_DL;
+	eNB_ran_sh.tenants[2].ue_downlink_sched = assign_rbs_RR_DL;
+	eNB_ran_sh.tenants[3].ue_downlink_sched = assign_rbs_RR_DL;
+	eNB_ran_sh.tenants[4].ue_downlink_sched = assign_rbs_RR_DL;
+	eNB_ran_sh.tenants[5].ue_downlink_sched = assign_rbs_RR_DL;
 
 	/* Initially all the RBs belongs to tenant owing the eNB. */
 
@@ -827,18 +846,22 @@ int ran_sharing_sched_init (
 		plmn_tmp[MAX_PLMN_LEN_P_NULL - 1] = '\0';
 	}
 
-	eNB_ran_sh.tenants[0].plmn_id = plmn_conv_to_uint(plmn_tmp);
-	eNB_ran_sh.tenants[0].ue_downlink_sched = assign_rbs_CQI_DL;
+	/**************************** LOCK ************************************/
+	pthread_spin_lock(&tenants_info_lock);
+
+	tenant_info_add(plmn_conv_to_uint(plmn_tmp));
+
+	// tenant = tenant_info_get(plmn_conv_to_uint(plmn_tmp));
+	// tenant->ue_downlink_sched = assign_rbs_CQI_DL;
+
+	pthread_spin_unlock(&tenants_info_lock);
+	/************************** UNLOCK ************************************/
 
 	// eNB_ran_sh.tenants[0].plmn_id = 0x22293F;
 	// eNB_ran_sh.tenants[0].ue_downlink_sched = assign_rbs_RR_DL;
 
 	// eNB_ran_sh.tenants[1].plmn_id = 0x20893F;
-	eNB_ran_sh.tenants[1].ue_downlink_sched = assign_rbs_RR_DL;
-	eNB_ran_sh.tenants[2].ue_downlink_sched = assign_rbs_RR_DL;
-	eNB_ran_sh.tenants[3].ue_downlink_sched = assign_rbs_RR_DL;
-	eNB_ran_sh.tenants[4].ue_downlink_sched = assign_rbs_RR_DL;
-	eNB_ran_sh.tenants[5].ue_downlink_sched = assign_rbs_RR_DL;
+	// eNB_ran_sh.tenants[1].ue_downlink_sched = assign_rbs_RR_DL;
 
 	/* Static resource allocation purpose. */
 	eNB_ran_sh.tenant_sched_dl = NULL;
@@ -900,7 +923,7 @@ int ran_sharing_sched_init (
 				// 	// cell->sfalloc_dl[sf].rbs_alloc[rb]= 0x20893F;
 				// }
 				cell->sfalloc_dl[sf].rbs_alloc[rb] =
-												eNB_ran_sh.tenants[0].plmn_id;
+													plmn_conv_to_uint(plmn_tmp);
 #if 1
 				printf("%d\t", cell->sfalloc_dl[sf].rbs_alloc[rb]);
 #endif
