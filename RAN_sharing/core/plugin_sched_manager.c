@@ -18,7 +18,12 @@
  */
 
 #include "plugin_sched_manager.h"
+#include "rr.h"
+#include "cqi.h"
 
-int plugin_sched_mgr_init () {
-
-}
+/* Lookup for UE DL scheduler implementations.
+ */
+ue_DL_schedulers ue_DL_sched[N_UE_DL_SCHEDS] = {
+	{.name = "Round_Robin", .sched = assign_rbs_RR_DL, .n_params = 0, .params = NULL},
+	{.name = "CQI", .sched = assign_rbs_CQI_DL, .n_params = 0, .params = NULL}
+};

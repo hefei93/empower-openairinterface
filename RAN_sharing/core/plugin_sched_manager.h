@@ -17,41 +17,54 @@
  * Handles loading, switching, unloading of UE and tenant scheduler libraries.
  */
 
-#include "ran_sharing_sched.h"
+/* Number of UE DL scheduler implementations. */
+#define N_UE_DL_SCHEDS 2
 
-/* Holds the information related to UE schedulers based on scheduler name.
+#include "ran_sharing_defs.h"
+
+/* Information related to UE DL scheduler.
  */
-struct ue_sched {
-	/* Tree related data */
-	RB_ENTRY(ue_sched) ue_sch;
+typedef struct {
 	/* Name of the UE scheduler. */
-	char * name;
+	char *name;
 
 	/* UE downlink scheduler handle. */
-	void (*ue_downlink_sched) (
+	void (*sched) (
 		/* PLMN ID of the tenant. */
-		char plmn_id[MAX_PLMN_LEN_P_NULL],
+		uint32_t plmn_id,
 		/* Module identifier. */
 		module_id_t m_id,
 		/* Current frame number. */
 		frame_t f,
 		/* Current subframe number. */
 		sub_frame_t sf,
+		/* Subframe number maintained for scheduling window. */
+		uint64_t sw_sf,
+		/* Number of Resource Block Groups (RBG) in each CCs. */
+		int N_RBG[MAX_NUM_CCs],
 		/* eNB MAC instance. */
-		eNB_MAC_INST * eNB_mac_inst,
+		eNB_MAC_INST *eNB_mac_inst,
 		/* eNB MAC interface. */
-		MAC_xface * mac_xface,
-		/* Number of RBs for UEs assigned by the scheduler. */
-		uint16_t nb_rbs_req[MAX_NUM_CCs][NUMBER_OF_UE_MAX],
-		/* RB allocation in a particular subframe. */
-		unsigned char rballoc_sub[MAX_NUM_CCs][N_RBG_MAX],
+		MAC_xface *mac_xface,
+		/* LTE DL frame parameters. */
+		LTE_DL_FRAME_PARMS *frame_parms[MAX_NUM_CCs],
 		/* Minimum number of resource blocks that can be allocated to a UE. */
-		int min_rb_unit[MAX_NUM_CCs]);
+		int min_rb_unit[MAX_NUM_CCs],
+		/* Downlink Scheduling Window. (in number of Subframes) */
+		uint64_t sched_window_dl,
+		/* RAN sharing information per cell. */
+		cell_ran_sharing cell[MAX_NUM_CCs],
+		/* UEs RNTI values belonging to a tenant. */
+		rnti_t tenant_ues[NUMBER_OF_UE_MAX]);
 
-	/* UE uplink scheduler handle. */
+	/* Number of scheduling parameters for the scheduler. */
+	size_t n_params;
+	/* Name value pairs of the parameters to be passed to the scheduler. */
+	SchedulingParam **params;
 
-};
+} ue_DL_schedulers;
 
-/* Compares two UE schedulers based on scheduler name.
+/* Lookup for UE DL scheduler implementations.
  */
-int ue_scheds_comp (struct ue_sched * s1, struct ue_sched * s2);
+extern ue_DL_schedulers ue_DL_sched[N_UE_DL_SCHEDS];
+
