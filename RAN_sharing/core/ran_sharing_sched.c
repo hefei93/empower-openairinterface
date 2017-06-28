@@ -21,8 +21,7 @@
 #include "ran_sharing_sched.h"
 #include "ran_sharing_extern.h"
 #include "tenant.h"
-#include "rr.h"
-#include "cqi.h"
+#include "plugin_sched_manager.h"
 
 #include "emoai.h"
 
@@ -359,8 +358,7 @@ void ran_sharing_dlsch_sched (
 	}
 #endif
 
-	// ran_sharing_dlsch_sort_UEs (m_id, eNB_ran_sh.cell);
-	sort_UEs (m_id, f, sf);
+	ran_sharing_dlsch_scheduled_UEs (m_id, eNB_ran_sh.cell, sw_sf);
 
 	/*
 	 * Allocate Resource Blocks Groups to all scheduled for UEs of tenants.
@@ -383,41 +381,58 @@ void ran_sharing_dlsch_sched (
 	/************************** UNLOCK ************************************/
 }
 
-// void ran_sharing_dlsch_sort_UEs (
-// 	/* Module identifier. */
-// 	module_id_t m_id,
-// 	/* RAN sharing information per cell. */
-// 	cell_ran_sharing cell[MAX_NUM_CCs],
-// 	/* Subframe number maintained for scheduling window. */
-// 	uint64_t sw_sf) {
+void ran_sharing_dlsch_scheduled_UEs (
+	/* Module identifier. */
+	module_id_t m_id,
+	/* RAN sharing information per cell. */
+	cell_ran_sharing cell[MAX_NUM_CCs],
+	/* Subframe number maintained for scheduling window. */
+	uint64_t sw_sf) {
 
-// 	/* RNTI value of UE. */
-// 	rnti_t rnti;
-// 	int list[NUMBER_OF_UE_MAX];
-// 	int list_size = 0, cc_id, i, t, rb;
-// 	rnti_t sched_ues[NUMBER_OF_UE_MAX] = {0};
+	/* RNTI value of UE. */
+	rnti_t rnti;
+	int list[NUMBER_OF_UE_MAX] = {0};
+	int cc_id, n, t, rb, ue_present;
+	rnti_t sched_ues[NUMBER_OF_UE_MAX] = {0};
 
-// 	UE_list_t *UE_list = &eNB_mac_inst[m_id].UE_list;
-// 	/* Initialize the UE list head to -1. */
-// 	UE_list->head = -1;
+	UE_list_t *UE_list = &eNB_mac_inst[m_id].UE_list;
+	/* Initialize the UE list head to -1. */
+	UE_list->head = -1;
 
-// 	/* Loop over active component carriers. */
-// 	for (cc_id = 0; cc_id < MAX_NUM_CCs; cc_id++) {
+	t = 0;
+	/* Loop over active component carriers. */
+	for (cc_id = 0; cc_id < MAX_NUM_CCs; cc_id++) {
+		/* Loop over all RBs in the subframe. */
+		for (rb = 0; rb < cell[cc_id].sfalloc_dl_ue[sw_sf].n_rbs_alloc; rb++) {
+			rnti = cell[cc_id].sfalloc_dl_ue[sw_sf].rbs_alloc[rb];
+			if (rnti == RB_RESERVED || rnti == RB_NOT_SCHED) {
+				continue;
+			}
+			ue_present = 0;
+			for (n = 0; n < NUMBER_OF_UE_MAX; n++) {
+				if (rnti == sched_ues[n]) {
+					ue_present = 1;
+					break;
+				}
+			}
+			if (!ue_present) {
+				sched_ues[t] = rnti;
+				list[t] = find_UE_id(m_id, rnti);
+				t++;
+			}
+		}
+	}
 
-// 		for (rb)
-
-// 		rnti = cell[cc_id].sfalloc_dl_ue[sw_sf].rbs_alloc[rb];
-// 		if (rnti == RB_RESERVED || rnti == RB_NOT_SCHED) {
-// 			continue;
-// 		}
-// 	}
-
-
-// 	list[list_size] = i;
-// 	list_size++;
-// 	UE_list->next[list[i]] = list[i+1];
-
-// }
+	if (t) {
+		for (n = 0; n < t - 1; n++) {
+			UE_list->next[list[n]] = list[n + 1];
+		}
+		UE_list->next[list[t - 1]] = -1;
+		UE_list->head = list[0];
+	} else {
+		UE_list->head = -1;
+	}
+}
 
 void ran_sharing_dlsch_sched_alloc (
 	/* Module identifier. */
@@ -821,12 +836,17 @@ int ran_sharing_sched_init (
 	int cc_id, rb, sf, i, t;
 	tenant_info *tenant;
 
-	eNB_ran_sh.tenants[0].ue_downlink_sched = assign_rbs_RR_DL;
-	eNB_ran_sh.tenants[1].ue_downlink_sched = assign_rbs_RR_DL;
-	eNB_ran_sh.tenants[2].ue_downlink_sched = assign_rbs_RR_DL;
-	eNB_ran_sh.tenants[3].ue_downlink_sched = assign_rbs_RR_DL;
-	eNB_ran_sh.tenants[4].ue_downlink_sched = assign_rbs_RR_DL;
-	eNB_ran_sh.tenants[5].ue_downlink_sched = assign_rbs_RR_DL;
+	for (i = 0; i < N_UE_DL_SCHEDS; i ++) {
+		if (strcmp(ue_DL_sched[i].name, "Round_Robin") == 0) {
+			eNB_ran_sh.tenants[0].ue_downlink_sched = ue_DL_sched[i].sched;
+			eNB_ran_sh.tenants[1].ue_downlink_sched = ue_DL_sched[i].sched;
+			eNB_ran_sh.tenants[2].ue_downlink_sched = ue_DL_sched[i].sched;
+			eNB_ran_sh.tenants[3].ue_downlink_sched = ue_DL_sched[i].sched;
+			eNB_ran_sh.tenants[4].ue_downlink_sched = ue_DL_sched[i].sched;
+			eNB_ran_sh.tenants[5].ue_downlink_sched = ue_DL_sched[i].sched;
+			break;
+		}
+	}
 
 	/* Initially all the RBs belongs to tenant owing the eNB. */
 
@@ -851,8 +871,13 @@ int ran_sharing_sched_init (
 
 	tenant_info_add(plmn_conv_to_uint(plmn_tmp));
 
-	// tenant = tenant_info_get(plmn_conv_to_uint(plmn_tmp));
-	// tenant->ue_downlink_sched = assign_rbs_CQI_DL;
+	tenant = tenant_info_get(plmn_conv_to_uint(plmn_tmp));
+	for (i = 0; i < N_UE_DL_SCHEDS; i ++) {
+		if (strcmp(ue_DL_sched[i].name, "CQI") == 0) {
+			tenant->ue_downlink_sched = ue_DL_sched[i].sched;
+			break;
+		}
+	}
 
 	pthread_spin_unlock(&tenants_info_lock);
 	/************************** UNLOCK ************************************/
@@ -956,14 +981,14 @@ int ran_sharing_sched_init (
 	// t_ues_id[0].ue_ids[1] = 3;
 	// t_ues_id[0].ue_ids[2] = 5;
 	t_ues_id[0].ue_ids[0] = 0;
-	t_ues_id[0].ue_ids[1] = 2;
+	t_ues_id[0].ue_ids[1] = 1;
 	t_ues_id[0].ue_ids[2] = 4;
 
 	t_ues_id[1].plmn_id = 0x20893F;
 	// t_ues_id[1].ue_ids[0] = 0;
 	// t_ues_id[1].ue_ids[1] = 2;
 	// t_ues_id[1].ue_ids[2] = 4;
-	t_ues_id[1].ue_ids[0] = 1;
+	t_ues_id[1].ue_ids[0] = 2;
 	t_ues_id[1].ue_ids[1] = 3;
 	t_ues_id[1].ue_ids[2] = 5;
 

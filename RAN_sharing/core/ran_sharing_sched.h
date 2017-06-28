@@ -98,6 +98,16 @@ void ran_sharing_dlsch_sched_alloc (
 	/* RAN sharing information per cell. */
 	cell_ran_sharing cell[MAX_NUM_CCs]);
 
+/* Finding all the UEs of all tenants scheduled for a particular subframe.
+ */
+void ran_sharing_dlsch_scheduled_UEs (
+	/* Module identifier. */
+	module_id_t m_id,
+	/* RAN sharing information per cell. */
+	cell_ran_sharing cell[MAX_NUM_CCs],
+	/* Subframe number maintained for scheduling window. */
+	uint64_t sw_sf);
+
 /* Fetch the Component Carrier Id based on the Physical Cell Id.
  */
 int pci_to_cc_id_dl (
