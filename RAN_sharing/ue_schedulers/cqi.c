@@ -23,8 +23,8 @@ typedef struct {
 	rnti_t rnti;
 	/* Number of RBs required. */
 	uint16_t n_rbs;
-	/* UEs MCS as per CQI. */
-	uint8_t mcs;
+	/* UEs CQI. */
+	uint8_t cqi;
 } cqi_sched_i;
 
 /* Assigns the available RBs to UEs based on CQI in Downlink.
@@ -57,12 +57,10 @@ void assign_rbs_CQI_DL (
 	/* UEs RNTI values belonging to a tenant. */
 	rnti_t tenant_ues[NUMBER_OF_UE_MAX]) {
 
-	int i, j, cc_id = 0, avail_rbs = 0, ue_id;
-	uint16_t TBS = 0;
+	int i, j, cc_id = 0, avail_rbs = 0;
 
 	cqi_sched_i cqi_sch_i[MAX_NUM_CCs][NUMBER_OF_UE_MAX];
 	LTE_eNB_UE_stats *eNB_UE_stats[MAX_NUM_CCs][NUMBER_OF_UE_MAX];
-	UE_list_t *UE_list = &eNB_mac_inst[m_id].UE_list;
 
 	for (cc_id = 0; cc_id < MAX_NUM_CCs; cc_id++) {
 
@@ -81,52 +79,50 @@ void assign_rbs_CQI_DL (
 						mac_xface->get_eNB_UE_stats(m_id, cc_id, tenant_ues[i]);
 
 				cqi_sch_i[cc_id][i].rnti = tenant_ues[i];
-				cqi_sch_i[cc_id][i].mcs =
-								cqi_to_mcs[eNB_UE_stats[cc_id][i]->DL_cqi[0]];
-				cqi_sch_i[cc_id][i].n_rbs = min_rb_unit[cc_id];
-
-				TBS = mac_xface->get_TBS_DL(cqi_sch_i[cc_id][i].mcs,
-											cqi_sch_i[cc_id][i].n_rbs);
-
-				ue_id = find_UE_id(m_id, tenant_ues[i]);
-
-				while (TBS <
-						UE_list->UE_template[cc_id][ue_id].dl_buffer_total) {
-
-					cqi_sch_i[cc_id][i].n_rbs += min_rb_unit[cc_id];
-
-					if (cqi_sch_i[cc_id][i].n_rbs > avail_rbs) {
-						cqi_sch_i[cc_id][i].n_rbs = avail_rbs;
-						break;
-					}
-
-					TBS = mac_xface->get_TBS_DL(cqi_sch_i[cc_id][i].mcs,
-												cqi_sch_i[cc_id][i].n_rbs);
-				}
+				cqi_sch_i[cc_id][i].cqi = eNB_UE_stats[cc_id][i]->DL_cqi[0];
+				cqi_sch_i[cc_id][i].n_rbs = 0;
 			}
 		}
 
-		/* Sort UEs based on MCS. */
+		/* Sort UEs based on their CQI. */
 		for (i = 0; i < NUMBER_OF_UE_MAX; i++) {
 			for (j = 0; j < NUMBER_OF_UE_MAX - 1; j ++) {
 				if (cqi_sch_i[cc_id][j].rnti != NOT_A_RNTI &&
 					cqi_sch_i[cc_id][j + 1].rnti != NOT_A_RNTI &&
-					cqi_sch_i[cc_id][j + 1].mcs < cqi_sch_i[cc_id][j].mcs) {
+					cqi_sch_i[cc_id][j + 1].cqi < cqi_sch_i[cc_id][j].cqi) {
 
 					cqi_sched_i temp;
 
 					temp.rnti = cqi_sch_i[cc_id][j + 1].rnti;
-					temp.mcs = cqi_sch_i[cc_id][j + 1].mcs;
-					temp.n_rbs = cqi_sch_i[cc_id][j + 1].n_rbs;
+					temp.cqi = cqi_sch_i[cc_id][j + 1].cqi;
 
 					cqi_sch_i[cc_id][j + 1].rnti = cqi_sch_i[cc_id][j].rnti;
-					cqi_sch_i[cc_id][j + 1].mcs = cqi_sch_i[cc_id][j].mcs;
-					cqi_sch_i[cc_id][j + 1].n_rbs = cqi_sch_i[cc_id][j].n_rbs;
+					cqi_sch_i[cc_id][j + 1].cqi = cqi_sch_i[cc_id][j].cqi;
 
 					cqi_sch_i[cc_id][j].rnti = temp.rnti;
-					cqi_sch_i[cc_id][j].mcs = temp.mcs;
-					cqi_sch_i[cc_id][j].n_rbs = temp.n_rbs;
+					cqi_sch_i[cc_id][j].cqi = temp.cqi;
 				}
+			}
+		}
+
+		/* Assign RBs to UEs based on their CQI. */
+		for (i = 0; i < NUMBER_OF_UE_MAX; i++) {
+			for (j = 0; j < NUMBER_OF_UE_MAX; j ++) {
+
+				if (cqi_sch_i[cc_id][j].rnti == NOT_A_RNTI) {
+					continue;
+				}
+
+				if (avail_rbs < 0 || avail_rbs == 0) {
+					break;
+				}
+
+				cqi_sch_i[cc_id][j].n_rbs += min_rb_unit[cc_id];
+				avail_rbs -= min_rb_unit[cc_id];
+			}
+
+			if (avail_rbs < 0 || avail_rbs == 0) {
+				break;
 			}
 		}
 
@@ -137,11 +133,8 @@ void assign_rbs_CQI_DL (
 			}
 		}
 
-		/* Assign the RBs to UE in decreasing order of MCS. */
+		/* Allocation of RBs. */
 		for (i = 0; i < NUMBER_OF_UE_MAX; i++) {
-
-			if (avail_rbs <= 0)
-				break;
 
 			for (j = 0; j < cell[cc_id].sfalloc_dl[sw_sf].n_rbs_alloc; j++) {
 
@@ -154,7 +147,6 @@ void assign_rbs_CQI_DL (
 					cell[cc_id].sfalloc_dl_ue[sw_sf].rbs_alloc[j] =
 													cqi_sch_i[cc_id][i].rnti;
 					cqi_sch_i[cc_id][i].n_rbs--;
-					avail_rbs--;
 				}
 			}
 		}

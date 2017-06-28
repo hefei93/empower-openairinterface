@@ -19,9 +19,12 @@
 #ifndef __CQI_SCHED_H
 #define __CQI_SCHED_H
 
+#define MAX_CQI 16
+
 #include <stdint.h>
 #include <stdio.h>
 #include <inttypes.h>
+#include <math.h>
 
 /* Importing global variables and variable types defined in OAI */
 #include "ran_sharing_defs.h"
