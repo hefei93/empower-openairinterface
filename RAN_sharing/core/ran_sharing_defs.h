@@ -244,7 +244,9 @@ typedef struct {
 		/* Downlink Scheduling Window. (in number of Subframes) */
 		uint64_t sched_window_dl,
 		/* RAN sharing information per cell. */
-		cell_ran_sharing cell[MAX_NUM_CCs]);
+		cell_ran_sharing cell[MAX_NUM_CCs],
+		/* List holding tenants information. */
+		tenant_info tenants[MAX_TENANTS]);
 
 	/* Uplink Scheduling Window. (in number of Subframes) */
 	uint64_t sched_window_ul;
