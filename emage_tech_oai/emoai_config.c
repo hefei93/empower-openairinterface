@@ -22,6 +22,7 @@
 #include "openair1/PHY/extern.h"
 #ifdef RAN_SHARING_FLAG
 	#include "ran_sharing_extern.h"
+	#include "plugin_sched_manager.h"
 #endif /* RAN_SHARING_FLAG */
 
 /* Holds the transaction id of UEs ID report trigger request.
@@ -1098,7 +1099,7 @@ RbsAllocPerCell * emoai_prep_ran_sh_dl_info (module_id_t m_id, int cc_id) {
 
 int emoai_eNB_cells_report (EmageMsg *request, EmageMsg **reply) {
 
-	int cc_id;
+	int cc_id, i;
 	ENBCellsReq *req;
 
 	/* If the event type is not a single event then its an error. */
@@ -1145,11 +1146,21 @@ int emoai_eNB_cells_report (EmageMsg *request, EmageMsg **reply) {
 		ran_sh_i->sched_window_dl = eNB_ran_sh.sched_window_dl;
 		ran_sh_i->sched_window_ul = eNB_ran_sh.sched_window_ul;
 		/* Available Tenant Schedulers implementations. */
-		ran_sh_i->n_tenant_schedulers = 0;
-		ran_sh_i->tenant_schedulers = NULL;
+		ran_sh_i->n_tenant_schedulers_dl = 0;
+		ran_sh_i->tenant_schedulers_dl = NULL;
+		ran_sh_i->n_tenant_schedulers_ul = 0;
+		ran_sh_i->tenant_schedulers_ul = NULL;
 		/* Available UE Schedulers implementations. */
-		ran_sh_i->n_ue_schedulers = 0;
-		ran_sh_i->ue_schedulers = NULL;
+		ran_sh_i->n_ue_schedulers_dl = N_UE_DL_SCHEDS;
+		ran_sh_i->ue_schedulers_dl =
+						malloc(ran_sh_i->n_ue_schedulers_dl * sizeof(char *));
+		for (i = 0; i < ran_sh_i->n_ue_schedulers_dl; i++) {
+			ran_sh_i->ue_schedulers_dl[i] =
+						calloc(strlen(ue_DL_sched[i].name) + 1, sizeof(char));
+			strcpy(ran_sh_i->ue_schedulers_dl[i], ue_DL_sched[i].name);
+		}
+		ran_sh_i->n_ue_schedulers_ul = 0;
+		ran_sh_i->ue_schedulers_ul = NULL;
 
 		ran_sh_i->n_rbs_alloc_dl = MAX_NUM_CCs;
 		ran_sh_i->rbs_alloc_dl =

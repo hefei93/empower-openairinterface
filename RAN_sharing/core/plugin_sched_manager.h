@@ -19,6 +19,8 @@
 
 /* Number of UE DL scheduler implementations. */
 #define N_UE_DL_SCHEDS 2
+/* Number of UE UL scheduler implementations. */
+#define N_UE_UL_SCHEDS 0
 
 #include "ran_sharing_defs.h"
 
