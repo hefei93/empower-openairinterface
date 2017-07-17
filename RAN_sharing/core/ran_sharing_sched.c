@@ -147,7 +147,7 @@ void ran_sharing_dlsch_sched (
 		for (cc_id = 0; cc_id < MAX_NUM_CCs; cc_id++) {
 			cell = &eNB_ran_sh.cell[cc_id];
 			/* Looping over all the Resource Blocks. */
-			for (i = 0; i < frame_parms[cc_id]->N_RB_DL; i++) {
+			for (i = 0; i < cell->sfalloc_dl[sw_sf].n_rbs_alloc; i++) {
 				if (cell->sfalloc_dl[sw_sf].rbs_alloc[i] != RB_RESERVED) {
 					cell->sfalloc_dl[sw_sf].rbs_alloc[i] = RB_NOT_SCHED;
 				}
@@ -162,6 +162,9 @@ void ran_sharing_dlsch_sched (
 				continue;
 
 			tenant = &eNB_ran_sh.tenants[i];
+
+			if (!tenant->rbs_req)
+				continue;
 
 			for (n = 0; n < tenant->rbs_req->n_rbs_dl; n++) {
 				id = pci_to_cc_id_dl(
@@ -181,9 +184,7 @@ void ran_sharing_dlsch_sched (
 					* (cell->allocable_rbs_dl[sf]));
 
 				/* Looping over all the Resource Blocks. */
-				for (i = 0;
-					i < frame_parms[id]->N_RB_DL;
-					i = i + min_rb_unit[id]) {
+				for (i = 0; i < N_RBG[cc_id]; i++) {
 
 					t = i;
 					while(t < i + min_rb_unit[id] &&
@@ -415,7 +416,7 @@ void ran_sharing_dlsch_scheduled_UEs (
 					break;
 				}
 			}
-			if (!ue_present) {
+			if (!ue_present && find_UE_id(m_id, rnti) != -1) {
 				sched_ues[t] = rnti;
 				list[t] = find_UE_id(m_id, rnti);
 				t++;
@@ -837,7 +838,7 @@ int ran_sharing_sched_init (
 	tenant_info *tenant;
 
 	for (i = 0; i < N_UE_DL_SCHEDS; i ++) {
-		if (strcmp(ue_DL_sched[i].name, "Round_Robin") == 0) {
+		if (strcmp(ue_DL_sched[i].name, "Round_Robin_DL") == 0) {
 			eNB_ran_sh.tenants[0].ue_downlink_sched = ue_DL_sched[i].sched;
 			eNB_ran_sh.tenants[1].ue_downlink_sched = ue_DL_sched[i].sched;
 			eNB_ran_sh.tenants[2].ue_downlink_sched = ue_DL_sched[i].sched;
@@ -873,7 +874,7 @@ int ran_sharing_sched_init (
 
 	tenant = tenant_info_get(plmn_conv_to_uint(plmn_tmp));
 	for (i = 0; i < N_UE_DL_SCHEDS; i ++) {
-		if (strcmp(ue_DL_sched[i].name, "CQI") == 0) {
+		if (strcmp(ue_DL_sched[i].name, "CQI_DL") == 0) {
 			tenant->ue_downlink_sched = ue_DL_sched[i].sched;
 			break;
 		}
