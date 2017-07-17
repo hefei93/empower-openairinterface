@@ -13,22 +13,25 @@
  * limitations under the License.
  */
 
-/* Implementation of Round-Robin scheduling of radio resources among UEs
+/* Implementation of CQI based scheduling of radio resources to UEs in an eNB.
  */
 
-#ifndef __RR_SCHED_H
-#define __RR_SCHED_H
+#ifndef __CQI_UE_SCHED_H
+#define __CQI_UE_SCHED_H
+
+#define MAX_CQI 16
 
 #include <stdint.h>
 #include <stdio.h>
 #include <inttypes.h>
+#include <math.h>
 
 /* Importing global variables and variable types defined in OAI */
 #include "ran_sharing_defs.h"
 
-/* Assigns the available RBs to UEs in Round-Robin mechanism in Downlink.
+/* Assigns the available RBs to UEs based on CQI in Downlink.
 */
-void assign_rbs_RR_DL (
+void assign_rbs_CQI_DL (
 	/* PLMN ID of the tenant. */
 	uint32_t plmn_id,
 	/* Module identifier. */

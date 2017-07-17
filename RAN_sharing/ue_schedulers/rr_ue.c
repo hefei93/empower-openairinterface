@@ -16,7 +16,7 @@
 /* Implementation of Round-Robin scheduling of radio resources to UEs in an eNB.
  */
 
-#include "rr.h"
+#include "rr_ue.h"
 
 typedef struct {
 	/* PLMN ID of the tenant. */

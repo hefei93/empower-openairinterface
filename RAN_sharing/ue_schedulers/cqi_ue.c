@@ -16,7 +16,7 @@
 /* Implementation of CQI based scheduling of radio resources to UEs in an eNB.
  */
 
-#include "cqi.h"
+#include "cqi_ue.h"
 
 typedef struct {
 	/* RNTI of the UE. */
@@ -57,10 +57,11 @@ void assign_rbs_CQI_DL (
 	/* UEs RNTI values belonging to a tenant. */
 	rnti_t tenant_ues[NUMBER_OF_UE_MAX]) {
 
-	int i, j, cc_id = 0, avail_rbs = 0;
+	int i, j, cc_id = 0, avail_rbs = 0, ue_id;
 
 	cqi_sched_i cqi_sch_i[MAX_NUM_CCs][NUMBER_OF_UE_MAX];
 	LTE_eNB_UE_stats *eNB_UE_stats[MAX_NUM_CCs][NUMBER_OF_UE_MAX];
+	UE_list_t *UE_list = &eNB_mac_inst[m_id].UE_list;
 
 	for (cc_id = 0; cc_id < MAX_NUM_CCs; cc_id++) {
 
@@ -115,6 +116,16 @@ void assign_rbs_CQI_DL (
 
 				if (avail_rbs < 0 || avail_rbs == 0) {
 					break;
+				}
+
+				ue_id = find_UE_id(m_id, cqi_sch_i[cc_id][j].rnti);
+
+				if (ue_id == -1) {
+					continue;
+				}
+
+				if (UE_list->UE_template[cc_id][ue_id].dl_buffer_total <= 0) {
+					continue;
 				}
 
 				cqi_sch_i[cc_id][j].n_rbs += min_rb_unit[cc_id];
