@@ -1839,7 +1839,7 @@ int emoai_RRC_meas_reconf (
 					(struct SPS_Config*)NULL,
 					NULL,
 #ifdef EXMIMO_IOT
-					NULL, NULL, NULL,NULL,
+					NULL, NULL, NULL, NULL, NULL, NULL, NULL,
 #else
 					mo_add_l,
 					mo_rem_l,
