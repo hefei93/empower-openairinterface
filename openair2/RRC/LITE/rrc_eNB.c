@@ -2296,7 +2296,7 @@ rrc_eNB_generate_defaultRRCConnectionReconfiguration(const protocol_ctxt_t* cons
                                          (struct SPS_Config*)NULL,    // *sps_Config,
                                          (struct PhysicalConfigDedicated*)*physicalConfigDedicated,
 #ifdef EXMIMO_IOT
-                                         NULL, NULL, NULL,NULL,
+                                         NULL, NULL, NULL, NULL, NULL, NULL, NULL,
 #else
                                          NULL,//(MeasObjectToAddModList_t*)MeasObj_list,
                                          NULL,
