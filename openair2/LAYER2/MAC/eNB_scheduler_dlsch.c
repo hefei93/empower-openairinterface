@@ -66,6 +66,10 @@
   #include "ran_sharing_sched.h"
 #endif /* RAN_SHARING_FLAG */
 
+#ifdef EMAGE_AGENT
+  #include "emoai_vbs_stats.h"
+#endif /* EMAGE_AGENT */
+
 //------------------------------------------------------------------------------
 void
 add_ue_dlsch_info(
@@ -826,6 +830,7 @@ schedule_ue_spec(
           UE_list->eNB_UE_stats[CC_id][UE_id].total_rbs_used_retx+=nb_rb;
           UE_list->eNB_UE_stats[CC_id][UE_id].dlsch_mcs1=eNB_UE_stats->dlsch_mcs1;
           UE_list->eNB_UE_stats[CC_id][UE_id].dlsch_mcs2=eNB_UE_stats->dlsch_mcs1;
+          eNB->eNB_stats[CC_id].dl_prb_utiliz += nb_rb;
         } else {
           LOG_D(MAC,"[eNB %d] Frame %d CC_id %d : don't schedule UE %d, its retransmission takes more resources than we have\n",
                 module_idP, frameP, CC_id, UE_id);
@@ -1180,6 +1185,7 @@ schedule_ue_spec(
           // store stats
           eNB->eNB_stats[CC_id].dlsch_bytes_tx+=sdu_length_total;
           eNB->eNB_stats[CC_id].dlsch_pdus_tx+=1;
+          eNB->eNB_stats[CC_id].dl_prb_utiliz += nb_rb;
 
           UE_list->eNB_UE_stats[CC_id][UE_id].rbs_used = nb_rb;
           UE_list->eNB_UE_stats[CC_id][UE_id].total_rbs_used += nb_rb;
@@ -1672,6 +1678,13 @@ schedule_ue_spec(
       }
 
     } // UE_id loop
+    // Add number of PRBs used by the control channels
+    eNB->eNB_stats[CC_id].dl_prb_utiliz += frame_parms[CC_id]->N_RB_DL - eNB->eNB_stats[CC_id].available_prbs;
+    // Average of number of PRBs used in one frame
+    // if (subframeP == 9) {
+    //   // emoai_trig_cell_stats_report(frame_parms[CC_id]->Nid_cell, CELL_STATS_TYPES__CELLSTT_PRB_UTILIZATION);
+    //   eNB->eNB_stats[CC_id].dl_prb_utiliz = 0;
+    // }
   }  // CC_id loop
 
 
