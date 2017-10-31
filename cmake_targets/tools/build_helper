@@ -547,7 +547,8 @@ check_install_oai_software() {
 	pydb \
 	libyaml-dev \
 	wget \
-	libxpm-dev
+	libxpm-dev \
+  libpcap-dev
 
     $SUDO update-alternatives --set liblapack.so /usr/lib/atlas-base/atlas/liblapack.so
 
