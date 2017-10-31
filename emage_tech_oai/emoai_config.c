@@ -65,6 +65,7 @@ int emoai_trig_UEs_ID_report (void) {
 	if (em_has_trigger(b_id, ues_id_trigg_tid, EM_UEs_ID_REPORT_TRIGGER) == 0) {
 		/* Trigger does not exist in agent so remove from wrapper as well. */
 		ues_id_trigg_tid = -1;
+		return 0;
 	}
 
 	/* Reply message. */
@@ -288,6 +289,7 @@ int emoai_trig_RRC_meas_conf_report (rnti_t *rnti) {
 		if (rrc_m_conf_rem_trigg(ctxt) < 0) {
 			goto error;
 		}
+		return 0;
 	}
 
 	/* Reply message. */
@@ -1013,7 +1015,7 @@ CellInformation * emoai_prep_cell_info (module_id_t m_id, int cc_id) {
 		}
 	} else {
 		/* Iterate through TDD bands. */
-		for (int i = 0; i < 14; i++) {
+		for (i = 0; i < 14; i++) {
 			if (tdd_bands[i].n == emoai_get_operating_band(cc_id)) {
 				cell->carrier_freq -= tdd_bands[i].f_l;
 				cell->carrier_freq = (cell->carrier_freq * 10) +

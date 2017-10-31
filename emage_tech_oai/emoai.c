@@ -20,7 +20,10 @@
 #include "emoai.h"
 #include "emoai_config.h"
 #include "emoai_rrc_measurements.h"
-#include "emoai_ran_sharing_ctrl.h"
+#ifdef RAN_SHARING_FLAG
+	#include "emoai_ran_sharing_ctrl.h"
+#endif /* RAN_SHARING_FLAG */
+#include "emoai_vbs_stats.h"
 
 /* Agent operations for OAI application. */
 struct em_agent_ops sim_ops = {
@@ -29,7 +32,10 @@ struct em_agent_ops sim_ops = {
 	.RRC_meas_conf = emoai_RRC_meas_conf_report,
 	.RRC_measurements = emoai_RRC_measurements,
 	.eNB_cells_report = emoai_eNB_cells_report,
+#ifdef RAN_SHARING_FLAG
 	.ran_sharing_control = emoai_ran_sharing_ctrl,
+#endif /* RAN_SHARING_FLAG */
+	.cell_statistics_report = emoai_cell_stats_report,
 };
 
 int emoai_init (void) {
@@ -40,6 +46,11 @@ int emoai_init (void) {
 	}
 	/* Initializing lock for rrc measurements configuration triggers list. */
 	if (pthread_spin_init(&rrc_m_conf_t_lock, PTHREAD_PROCESS_SHARED) != 0) {
+		goto error;
+	}
+	/* Initializing lock for cell statistics triggers list. */
+	if (pthread_spin_init(&cell_stats_conf_t_lock,
+							PTHREAD_PROCESS_SHARED) != 0) {
 		goto error;
 	}
 

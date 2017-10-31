@@ -290,6 +290,11 @@ int emoai_trig_rrc_measurements (struct rrc_meas_params *p) {
 		if (rrc_meas_rem_trigg(ctxt) < 0) {
 			goto error;
 		}
+		/* Free the measurement report received from UE. */
+		ASN_STRUCT_FREE_CONTENTS_ONLY(asn_DEF_MeasResults, &p->meas);
+		/* Free the params. */
+		free(p);
+		return 0;
 	}
 
 	// if (p->meas == NULL)

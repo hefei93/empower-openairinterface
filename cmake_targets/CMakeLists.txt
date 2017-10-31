@@ -565,7 +565,7 @@ add_boolean_option(MESSAGE_CHART_GENERATOR_PHY     False "trace some PHY exchang
 
 add_boolean_option(ENB_AGENT                   True         "enable eNB agent to inteface with a SDN contrller")
 add_boolean_option(EMAGE_AGENT                 True         "enable EMAge agent to inteface with a controller")
-add_boolean_option(RAN_SHARING_FLAG            True         "enable RAN slicing in eNB")
+add_boolean_option(RAN_SHARING_FLAG            False         "enable RAN slicing in eNB")
 add_boolean_option(FLEXRAN_AGENT_SB_IF         False        "enable FlexRAN agent to inteface with a SDN controller")
 
 ########################
@@ -1084,6 +1084,7 @@ set(RRC_DIR ${OPENAIR2_DIR}/RRC/LITE)
 set(PDCP_DIR  ${OPENAIR2_DIR}/LAYER2/PDCP_v10.1.0)
 set(L2_SRC
   ${OPENAIR2_DIR}/LAYER2/openair2_proc.c
+  ${PDCP_DIR}/wlan_pdcp.c
   ${PDCP_DIR}/pdcp.c
   ${PDCP_DIR}/pdcp_fifo.c
   ${PDCP_DIR}/pdcp_sequence_manager.c
@@ -1733,6 +1734,7 @@ if (${EMAGE_AGENT})
     ${CNET_EMAGE_TECH_OAI_DIR}/emoai_common.c
     ${CNET_EMAGE_TECH_OAI_DIR}/emoai_config.c
     ${CNET_EMAGE_TECH_OAI_DIR}/emoai_rrc_measurements.c
+    ${CNET_EMAGE_TECH_OAI_DIR}/emoai_vbs_stats.c
     ${CNET_EMAGE_TECH_OAI_DIR}/emoai.c
   )
 
@@ -1816,8 +1818,7 @@ endif (${EMAGE_AGENT})
 if (${RAN_SHARING_FLAG})
   target_link_libraries (lte-softmodem ${RAN_SHARING_LIB})
 endif (${RAN_SHARING_FLAG})
-
-
+target_link_libraries (lte-softmodem -lpcap)
 
 # lte-softmodem-nos1 is both eNB and UE implementation
 ###################################################
@@ -1857,7 +1858,7 @@ endif (${EMAGE_AGENT})
 if (${RAN_SHARING_FLAG})
   target_link_libraries (lte-softmodem-nos1 ${RAN_SHARING_LIB})
 endif (${RAN_SHARING_FLAG})
-
+target_link_libraries (lte-softmodem-nos1 -lpcap)
 
 # rrh
 ################################

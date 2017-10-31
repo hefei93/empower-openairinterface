@@ -125,7 +125,7 @@
 /*!\brief size of buffer status report table */
 #define BSR_TABLE_SIZE 64
 /*!\brief The power headroom reporting range is from -23 ...+40 dB and beyond, with step 1 */
-#define PHR_MAPPING_OFFSET 23  // if ( x>= -23 ) val = floor (x + 23) 
+#define PHR_MAPPING_OFFSET 23  // if ( x>= -23 ) val = floor (x + 23)
 /*!\brief maximum number of resource block groups */
 #define N_RBG_MAX 25 // for 20MHz channel BW
 /*!\brief minimum value for channel quality indicator */
@@ -133,9 +133,9 @@
 /*!\brief maximum value for channel quality indicator */
 #define MAX_CQI_VALUE  15
 /*!\briefmaximum number of supported bandwidth (1.4, 5, 10, 20 MHz) */
-#define MAX_SUPPORTED_BW  4  
+#define MAX_SUPPORTED_BW  4
 /*!\brief CQI values range from 1 to 15 (4 bits) */
-#define CQI_VALUE_RANGE 16 
+#define CQI_VALUE_RANGE 16
 
 /*!\brief value for indicating BSR Timer is not running */
 #define MAC_UE_BSR_TIMER_NOT_RUNNING   (0xFFFF)
@@ -150,16 +150,16 @@
 #define MIN_MAC_HDR_RLC_SIZE    (1 + MIN_RLC_PDU_SIZE)
 
 /*!\brief maximum number of slices / groups */
-#define MAX_NUM_SLICES 4 
+#define MAX_NUM_SLICES 4
 
-/* 
- * eNB part 
- */ 
+/*
+ * eNB part
+ */
 
 
-/* 
- * UE/ENB common part 
- */ 
+/*
+ * UE/ENB common part
+ */
 /*!\brief MAC header of Random Access Response for Random access preamble identifier (RAPID) */
 typedef struct {
   uint8_t RAPID:6;
@@ -299,12 +299,12 @@ typedef struct {
   uint8_t stop_sf_LSB:8;
 } __attribute__((__packed__))MSI_ELEMENT;
 #endif
-/*! \brief Values of CCCH LCID for DLSCH */ 
+/*! \brief Values of CCCH LCID for DLSCH */
 #define CCCH_LCHANID 0
 /*!\brief Values of BCCH logical channel */
-#define BCCH 3  // SI 
+#define BCCH 3  // SI
 /*!\brief Values of PCCH logical channel */
-#define PCCH 4  // Paging 
+#define PCCH 4  // Paging
 /*!\brief Value of CCCH / SRB0 logical channel */
 #define CCCH 0  // srb0
 /*!\brief DCCH / SRB1 logical channel */
@@ -314,9 +314,9 @@ typedef struct {
 /*!\brief DTCH DRB1  logical channel */
 #define DTCH 3 // LCID
 /*!\brief MCCH logical channel */
-#define MCCH 4 
+#define MCCH 4
 /*!\brief MTCH logical channel */
-#define MTCH 1 
+#define MTCH 1
 // DLSCH LCHAN ID
 /*!\brief LCID of UE contention resolution identity for DLSCH*/
 #define UE_CONT_RES 28
@@ -427,20 +427,20 @@ typedef struct {
 } eNB_DLSCH_INFO;
 /*! \brief eNB overall statistics */
 typedef struct {
-  /// num BCCH PDU per CC 
+  /// num BCCH PDU per CC
   uint32_t total_num_bcch_pdu;
-  /// BCCH buffer size  
+  /// BCCH buffer size
   uint32_t bcch_buffer;
-  /// total BCCH buffer size  
+  /// total BCCH buffer size
   uint32_t total_bcch_buffer;
   /// BCCH MCS
   uint32_t bcch_mcs;
 
-  /// num CCCH PDU per CC 
+  /// num CCCH PDU per CC
   uint32_t total_num_ccch_pdu;
-  /// BCCH buffer size  
+  /// BCCH buffer size
   uint32_t ccch_buffer;
-  /// total BCCH buffer size  
+  /// total BCCH buffer size
   uint32_t total_ccch_buffer;
   /// BCCH MCS
   uint32_t ccch_mcs;
@@ -467,22 +467,26 @@ typedef struct {
   uint32_t total_dlsch_bytes_tx;
   //
   uint32_t total_dlsch_pdus_tx;
-  
+  // Number of PRBs utilized in DL in DL over 1 frame
+  uint8_t dl_prb_utiliz;
+
   // here for RX
   //
   uint32_t ulsch_bitrate;
   //
   uint32_t ulsch_bytes_rx;
   //
-  uint64_t ulsch_pdus_rx; 
+  uint64_t ulsch_pdus_rx;
 
   uint32_t total_ulsch_bitrate;
   //
   uint32_t total_ulsch_bytes_rx;
   //
   uint32_t total_ulsch_pdus_rx;
-  
-  
+  // Number of PRBs utilized in UL over 1 frame
+  uint8_t ul_prb_utiliz;
+
+
   /// MAC agent-related stats
   /// total number of scheduling decisions
   int sched_decisions;
@@ -582,9 +586,9 @@ typedef struct {
   uint32_t rbs_used_retx_rx;
   ///  total rb used for a new uplink transmission
   uint32_t total_rbs_used_rx;
-  /// normalized rx power 
+  /// normalized rx power
   int32_t      normalized_rx_power;
-   /// target rx power 
+   /// target rx power
   int32_t    target_rx_power;
 
   /// num rx pdu
@@ -595,7 +599,7 @@ typedef struct {
   //  uint32_t tti_goodput[NB_RB_MAX];
   /// errors
   uint32_t num_errors_rx;
-  
+
   uint64_t overhead_bytes_rx;
   /// headers+ CE +  padding bytes for a MAC PDU
   uint64_t total_overhead_bytes_rx;
@@ -643,7 +647,7 @@ typedef struct {
   /// Current Aggregation Level for DCI
   uint8_t DCI_aggregation_min;
 
-  /// size of DLSCH size in bit 
+  /// size of DLSCH size in bit
   uint8_t DLSCH_dci_size_bits;
 
   /// DCI buffer for DLSCH
@@ -715,12 +719,12 @@ typedef struct {
   uint32_t dl_buffer_head_sdu_creation_time[MAX_NUM_LCID];
   /// maximum creation time of the downlink buffer head across all LCID
   uint32_t  dl_buffer_head_sdu_creation_time_max;
-  /// a flag indicating that the downlink head SDU is segmented  
+  /// a flag indicating that the downlink head SDU is segmented
   uint8_t    dl_buffer_head_sdu_is_segmented[MAX_NUM_LCID];
   /// size of remaining size to send for the downlink head SDU
   uint32_t dl_buffer_head_sdu_remaining_size_to_send[MAX_NUM_LCID];
 
-  /// total uplink buffer size 
+  /// total uplink buffer size
   uint32_t ul_total_buffer;
   /// uplink buffer creation time for each LCID
   uint32_t ul_buffer_creation_time[MAX_NUM_LCGID];
@@ -840,23 +844,23 @@ typedef struct {
   uint8_t sb_size;
   uint8_t nb_active_sb;
 } SBMAP_CONF;
-/*! \brief UE list used by eNB to order UEs/CC for scheduling*/ 
+/*! \brief UE list used by eNB to order UEs/CC for scheduling*/
 typedef struct {
-  /// DLSCH pdu 
+  /// DLSCH pdu
   DLSCH_PDU DLSCH_pdu[MAX_NUM_CCs][2][NUMBER_OF_UE_MAX];
   /// DCI template and MAC connection parameters for UEs
   UE_TEMPLATE UE_template[MAX_NUM_CCs][NUMBER_OF_UE_MAX];
   /// DCI template and MAC connection for RA processes
   int pCC_id[NUMBER_OF_UE_MAX];
-  /// sorted downlink component carrier for the scheduler 
+  /// sorted downlink component carrier for the scheduler
   int ordered_CCids[MAX_NUM_CCs][NUMBER_OF_UE_MAX];
-  /// number of downlink active component carrier 
+  /// number of downlink active component carrier
   int numactiveCCs[NUMBER_OF_UE_MAX];
-  /// sorted uplink component carrier for the scheduler 
+  /// sorted uplink component carrier for the scheduler
   int ordered_ULCCids[MAX_NUM_CCs][NUMBER_OF_UE_MAX];
-  /// number of uplink active component carrier 
+  /// number of uplink active component carrier
   int numactiveULCCs[NUMBER_OF_UE_MAX];
-  /// number of downlink active component carrier 
+  /// number of downlink active component carrier
   uint8_t dl_CC_bitmap[NUMBER_OF_UE_MAX];
   /// eNB to UE statistics
   eNB_UE_STATS eNB_UE_stats[MAX_NUM_CCs][NUMBER_OF_UE_MAX];
@@ -872,7 +876,7 @@ typedef struct {
   boolean_t active[NUMBER_OF_UE_MAX];
 } UE_list_t;
 
-/*! \brief eNB common channels */ 
+/*! \brief eNB common channels */
 typedef struct {
   /// Outgoing DCI for PHY generated by eNB scheduler
   DCI_PDU DCI_pdu;
@@ -912,15 +916,15 @@ typedef struct {
   MCH_PDU MCH_pdu;
 #endif
 #ifdef CBA
-  /// number of CBA groups 
+  /// number of CBA groups
   uint8_t num_active_cba_groups;
-  /// RNTI for each CBA group 
+  /// RNTI for each CBA group
   uint16_t cba_rnti[NUM_MAX_CBA_GROUP];
-  /// MCS for each CBA group 
+  /// MCS for each CBA group
   uint8_t group_mcs[NUM_MAX_CBA_GROUP];
 #endif
 } COMMON_channels_t;
-/*! \brief top level eNB MAC structure */ 
+/*! \brief top level eNB MAC structure */
 typedef struct {
   ///
   uint16_t Node_id;
@@ -941,30 +945,30 @@ typedef struct {
   /// eNB stats
   eNB_STATS eNB_stats[MAX_NUM_CCs];
   // MAC function execution peformance profiler
-  /// processing time of eNB scheduler 
+  /// processing time of eNB scheduler
   time_stats_t eNB_scheduler;
-  /// processing time of eNB scheduler for SI 
+  /// processing time of eNB scheduler for SI
   time_stats_t schedule_si;
   /// processing time of eNB scheduler for Random access
   time_stats_t schedule_ra;
-  /// processing time of eNB ULSCH scheduler 
+  /// processing time of eNB ULSCH scheduler
   time_stats_t schedule_ulsch;
   /// processing time of eNB DCI generation
   time_stats_t fill_DLSCH_dci;
   /// processing time of eNB MAC preprocessor
   time_stats_t schedule_dlsch_preprocessor;
-  /// processing time of eNB DLSCH scheduler 
+  /// processing time of eNB DLSCH scheduler
   time_stats_t schedule_dlsch; // include rlc_data_req + MAC header + preprocessor
-  /// processing time of eNB MCH scheduler 
+  /// processing time of eNB MCH scheduler
   time_stats_t schedule_mch;
   /// processing time of eNB ULSCH reception
   time_stats_t rx_ulsch_sdu; // include rlc_data_ind
 
 } eNB_MAC_INST;
 
-/* 
- * UE part 
- */ 
+/*
+ * UE part
+ */
 
 /*!\brief UE layer 2 status */
 typedef enum {
@@ -1145,25 +1149,25 @@ typedef struct {
   uint8_t msi_status;// could be an array if there are >1 MCH in one MBSFN area
 #endif
   //#ifdef CBA
-  /// CBA RNTI for each group 
+  /// CBA RNTI for each group
   uint16_t cba_rnti[NUM_MAX_CBA_GROUP];
-  /// last SFN for CBA channel access 
+  /// last SFN for CBA channel access
   uint8_t cba_last_access[NUM_MAX_CBA_GROUP];
   //#endif
-  /// total UE scheduler processing time 
+  /// total UE scheduler processing time
   time_stats_t ue_scheduler; // total
-  /// UE ULSCH tx  processing time inlcuding RLC interface (rlc_data_req) and mac header generation 
-  time_stats_t tx_ulsch_sdu;  
+  /// UE ULSCH tx  processing time inlcuding RLC interface (rlc_data_req) and mac header generation
+  time_stats_t tx_ulsch_sdu;
   /// UE DLSCH rx  processing time inlcuding RLC interface (mac_rrc_data_ind or mac_rlc_status_ind+mac_rlc_data_ind) and mac header parser
-  time_stats_t rx_dlsch_sdu ; 
-  /// UE query for MCH subframe processing time 
+  time_stats_t rx_dlsch_sdu ;
+  /// UE query for MCH subframe processing time
   time_stats_t ue_query_mch;
-  /// UE MCH rx processing time 
+  /// UE MCH rx processing time
   time_stats_t rx_mch_sdu;
-  /// UE BCCH rx processing time including RLC interface (mac_rrc_data_ind) 
-  time_stats_t rx_si; 
-  /// UE PCCH rx processing time including RLC interface (mac_rrc_data_ind) 
-  time_stats_t rx_p; 
+  /// UE BCCH rx processing time including RLC interface (mac_rrc_data_ind)
+  time_stats_t rx_si;
+  /// UE PCCH rx processing time including RLC interface (mac_rrc_data_ind)
+  time_stats_t rx_p;
 } UE_MAC_INST;
 /*! \brief ID of the neighboring cells used for HO*/
 typedef struct {

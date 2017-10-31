@@ -42,6 +42,9 @@ pthread_spinlock_t rrc_meas_t_lock;
 /* Lock for handling the rrc measurements configuration triggers list. */
 pthread_spinlock_t rrc_m_conf_t_lock;
 
+/* Lock for handling the cell statistics triggers list. */
+pthread_spinlock_t cell_stats_conf_t_lock;
+
 #ifdef RAN_SHARING_FLAG
 /* Lock for handling the list of tenants information. */
 pthread_spinlock_t tenants_info_lock;
