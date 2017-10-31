@@ -983,14 +983,14 @@ int ran_sharing_sched_init (
 	// t_ues_id[0].ue_ids[2] = 5;
 	t_ues_id[0].ue_ids[0] = 0;
 	t_ues_id[0].ue_ids[1] = 1;
-	t_ues_id[0].ue_ids[2] = 4;
+	t_ues_id[0].ue_ids[2] = 2;
 
 	t_ues_id[1].plmn_id = 0x20893F;
 	// t_ues_id[1].ue_ids[0] = 0;
 	// t_ues_id[1].ue_ids[1] = 2;
 	// t_ues_id[1].ue_ids[2] = 4;
-	t_ues_id[1].ue_ids[0] = 2;
-	t_ues_id[1].ue_ids[1] = 3;
+	t_ues_id[1].ue_ids[0] = 3;
+	t_ues_id[1].ue_ids[1] = 4;
 	t_ues_id[1].ue_ids[2] = 5;
 
 	return 0;
