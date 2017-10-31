@@ -102,6 +102,8 @@
 #   include "emoai_config.h"
 #   include "emoai_common.h"
 #   include "emoai_rrc_measurements.h"
+
+#include "emoai_vbs_stats.h"
 #endif /* EMAGE_AGENT */
 
 #include "SIMULATION/TOOLS/defs.h" // for taus
@@ -2482,6 +2484,12 @@ rrc_eNB_process_MeasurementReport(
       if (emoai_trig_rrc_measurements(p) < 0) {
         LOG_E(RRC, "Failed to send rrc measurements %x.\n", p->rnti);
       }
+      // Temporary code to track 2048 ms
+      // for (int cc = 0; cc < MAX_NUM_CCs; cc++) {
+      //   LTE_DL_FRAME_PARMS *fp;
+      //   fp = mac_xface->get_lte_frame_parms(ctxt_pP->module_id, cc);
+      //   emoai_trig_cell_stats_report(fp->Nid_cell, CELL_STATS_TYPES__CELLSTT_PRB_UTILIZATION);
+      // }
     #endif /* EMAGE_AGENT */
 
 

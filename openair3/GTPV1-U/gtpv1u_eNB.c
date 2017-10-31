@@ -336,7 +336,7 @@ NwGtpv1uRcT gtpv1u_eNB_process_stack_req(
 			 0,0,
 			 (gtpv1u_teid_data_p->eps_bearer_id) ? gtpv1u_teid_data_p->eps_bearer_id - 4: 5-4,
 			 buffer_len);
-      
+
       result = pdcp_data_req(
 			     &ctxt,
 			     SRB_FLAG_NO,
@@ -346,31 +346,31 @@ NwGtpv1uRcT gtpv1u_eNB_process_stack_req(
 			     buffer_len,
 			     buffer,
 			     PDCP_TRANSMISSION_MODE_DATA);
-      
-      
+
+
       if ( result == FALSE ) {
-	
+
 	if (ctxt.configured == FALSE )
 	  LOG_W(GTPU, "PDCP data request failed, cause: RB is not configured!\n") ;
-	else  
+	else
 	  LOG_W(GTPU, "PDCP data request failed\n");
-	
+
 	return NW_GTPV1U_FAILURE;
       }
-      
+
     } else {
       LOG_W(GTPU, "Received T-PDU from gtpv1u stack teid %u unknown size %u", teid, buffer_len);
     }
   }
     break;
-    
+
   default: {
     LOG_E(GTPU, "Received undefined UlpApi (%02x) from gtpv1u stack!\n",
           pUlpApi->apiType);
   }
-  
-  } // end of switch 
-  
+
+  } // end of switch
+
   return NW_GTPV1U_OK;
 }
 

@@ -1358,96 +1358,103 @@ int rrc_eNB_process_S1AP_INITIAL_CONTEXT_SETUP_REQ(MessageDef *msg_p, const char
 
     /* PLMN ID extraction start*/
 
-    // for (int i = 0; i < ue_context_p->ue_context.nb_of_e_rabs; i++) {
+    for (int i = 0; i < ue_context_p->ue_context.nb_of_e_rabs; i++) {
 
-    //   nas_message_t nas_msg;
-    //   memset(&nas_msg, 0, sizeof(nas_message_t));
+      nas_message_t nas_msg;
+      memset(&nas_msg, 0, sizeof(nas_message_t));
 
-    //   int size = 0;
-    //   uint32_t pdu_len = ue_context_p->ue_context.e_rab[i].param.nas_pdu.length;
-    //   uint8_t *pdu_buff = malloc(pdu_len * sizeof(uint8_t));
-    //   memcpy(pdu_buff, ue_context_p->ue_context.e_rab[i].param.nas_pdu.buffer, pdu_len * sizeof(uint8_t));
+      int size = 0;
+      uint32_t pdu_len = ue_context_p->ue_context.e_rab[i].param.nas_pdu.length;
+      uint8_t *pdu_buff = malloc(pdu_len * sizeof(uint8_t));
+      memcpy(pdu_buff, ue_context_p->ue_context.e_rab[i].param.nas_pdu.buffer, pdu_len * sizeof(uint8_t));
 
-    //   nas_message_security_header_t      *header = &nas_msg.header;
-    //   //  Decode the first octet of the header (security header type or EPS bearer identity, and protocol discriminator)
-    //   DECODE_U8((char *) pdu_buff, *(uint8_t*) (header), size);
+      nas_message_security_header_t      *header = &nas_msg.header;
+      //  Decode the first octet of the header (security header type or EPS bearer identity, and protocol discriminator)
+      DECODE_U8((char *) pdu_buff, *(uint8_t*) (header), size);
 
-    //   /* Decode NAS message */
-    //   if (header->protocol_discriminator == EPS_MOBILITY_MANAGEMENT_MESSAGE &&
-    //       pdu_len > NAS_MESSAGE_SECURITY_HEADER_SIZE) {
+      /* Decode NAS message */
+      if (header->protocol_discriminator == EPS_MOBILITY_MANAGEMENT_MESSAGE &&
+          pdu_len > NAS_MESSAGE_SECURITY_HEADER_SIZE) {
 
-    //     if (header->security_header_type != SECURITY_HEADER_TYPE_NOT_PROTECTED) {
-    //       /* Decode the message authentication code */
-    //       DECODE_U32((char *) pdu_buff+size, header->message_authentication_code, size);
-    //       /* Decode the sequence number */
-    //       DECODE_U8((char *) pdu_buff+size, header->sequence_number, size);
-    //     }
+        if (header->security_header_type != SECURITY_HEADER_TYPE_NOT_PROTECTED) {
+          /* Decode the message authentication code */
+          DECODE_U32((char *) pdu_buff+size, header->message_authentication_code, size);
+          /* Decode the sequence number */
+          DECODE_U8((char *) pdu_buff+size, header->sequence_number, size);
+        }
 
-    //     if (size > 1) {
-    //       pdu_buff += size;
-    //       pdu_len -= size;
-    //     }
+        if (size > 1) {
+          pdu_buff += size;
+          pdu_len -= size;
+        }
 
-    //     /* Decode plain NAS message */
-    //     EMM_msg *e_msg = &nas_msg.plain.emm;
-    //     emm_msg_header_t *emm_header = &e_msg->header;
+        /* Decode plain NAS message */
+        EMM_msg *e_msg = &nas_msg.plain.emm;
+        emm_msg_header_t *emm_header = &e_msg->header;
 
-    //     /* First decode the EMM message header */
-    //     int e_head_size = 0;
+        /* First decode the EMM message header */
+        int e_head_size = 0;
 
-    //     /* Check the buffer length */
-    //     if (pdu_len > sizeof(emm_msg_header_t)) {
+        /* Check the buffer length */
+        if (pdu_len > sizeof(emm_msg_header_t)) {
 
-    //       /* Decode the security header type and the protocol discriminator */
-    //       DECODE_U8(pdu_buff + e_head_size, *(uint8_t *)(emm_header), e_head_size);
-    //       /* Decode the message type */
-    //       DECODE_U8(pdu_buff + e_head_size, emm_header->message_type, e_head_size);
+          /* Decode the security header type and the protocol discriminator */
+          DECODE_U8(pdu_buff + e_head_size, *(uint8_t *)(emm_header), e_head_size);
+          /* Decode the message type */
+          DECODE_U8(pdu_buff + e_head_size, emm_header->message_type, e_head_size);
 
-    //       /* Check the protocol discriminator */
-    //       if (emm_header->protocol_discriminator == EPS_MOBILITY_MANAGEMENT_MESSAGE) {
+          /* Check the protocol discriminator */
+          if (emm_header->protocol_discriminator == EPS_MOBILITY_MANAGEMENT_MESSAGE) {
 
-    //         pdu_buff += e_head_size;
-    //         pdu_len -= e_head_size;
+            pdu_buff += e_head_size;
+            pdu_len -= e_head_size;
 
-    //         if (emm_header->message_type == ATTACH_ACCEPT) {
-    //           decode_attach_accept(&e_msg->attach_accept, pdu_buff, pdu_len);
+            if (emm_header->message_type == ATTACH_ACCEPT) {
+              decode_attach_accept(&e_msg->attach_accept, pdu_buff, pdu_len);
 
-    //           if (e_msg->attach_accept.guti.guti.typeofidentity == EPS_MOBILE_IDENTITY_GUTI) {
-    //             // ue_context_p->ue_context.plmn_id = e_msg->attach_accept.guti.guti.mccdigit1;
-    //             // ue_context_p->ue_context.plmn_id *= 10;
-    //             // ue_context_p->ue_context.plmn_id += e_msg->attach_accept.guti.guti.mccdigit2;
-    //             // ue_context_p->ue_context.plmn_id *= 10;
-    //             // ue_context_p->ue_context.plmn_id += e_msg->attach_accept.guti.guti.mccdigit3;
-    //             // ue_context_p->ue_context.plmn_id *= 10;
-    //             // ue_context_p->ue_context.plmn_id += e_msg->attach_accept.guti.guti.mncdigit1;
-    //             // ue_context_p->ue_context.plmn_id *= 10;
-    //             // ue_context_p->ue_context.plmn_id += e_msg->attach_accept.guti.guti.mncdigit2;
-    //             // if (e_msg->attach_accept.guti.guti.mncdigit3 != 0xF) {
-    //             //   ue_context_p->ue_context.plmn_id *= 10;
-    //             //   ue_context_p->ue_context.plmn_id += e_msg->attach_accept.guti.guti.mncdigit3;
-    //             // }
-    //             ue_context_p->ue_context.plmn_id[0] = '0' + e_msg->attach_accept.guti.guti.mccdigit1;
-    //             ue_context_p->ue_context.plmn_id[1] = '0' + e_msg->attach_accept.guti.guti.mccdigit2;
-    //             ue_context_p->ue_context.plmn_id[2] = '0' + e_msg->attach_accept.guti.guti.mccdigit3;
-    //             ue_context_p->ue_context.plmn_id[3] = '0' + e_msg->attach_accept.guti.guti.mncdigit1;
-    //             ue_context_p->ue_context.plmn_id[4] = '0' + e_msg->attach_accept.guti.guti.mncdigit2;
-    //             ue_context_p->ue_context.plmn_id[5] = '\0';
-    //             if (e_msg->attach_accept.guti.guti.mncdigit3 != 0xF) {
-    //               ue_context_p->ue_context.plmn_id[5] = '0' + e_msg->attach_accept.guti.guti.mncdigit3;
-    //               ue_context_p->ue_context.plmn_id[6] = '\0';
-    //             }
-    //           }
-    //         }
+              if (e_msg->attach_accept.guti.guti.typeofidentity == EPS_MOBILE_IDENTITY_GUTI) {
+                // ue_context_p->ue_context.plmn_id = e_msg->attach_accept.guti.guti.mccdigit1;
+                // ue_context_p->ue_context.plmn_id *= 10;
+                // ue_context_p->ue_context.plmn_id += e_msg->attach_accept.guti.guti.mccdigit2;
+                // ue_context_p->ue_context.plmn_id *= 10;
+                // ue_context_p->ue_context.plmn_id += e_msg->attach_accept.guti.guti.mccdigit3;
+                // ue_context_p->ue_context.plmn_id *= 10;
+                // ue_context_p->ue_context.plmn_id += e_msg->attach_accept.guti.guti.mncdigit1;
+                // ue_context_p->ue_context.plmn_id *= 10;
+                // ue_context_p->ue_context.plmn_id += e_msg->attach_accept.guti.guti.mncdigit2;
+                // if (e_msg->attach_accept.guti.guti.mncdigit3 != 0xF) {
+                //   ue_context_p->ue_context.plmn_id *= 10;
+                //   ue_context_p->ue_context.plmn_id += e_msg->attach_accept.guti.guti.mncdigit3;
+                // }
+                // ue_context_p->ue_context.plmn_id[0] = '0' + e_msg->attach_accept.guti.guti.mccdigit1;
+                // ue_context_p->ue_context.plmn_id[1] = '0' + e_msg->attach_accept.guti.guti.mccdigit2;
+                // ue_context_p->ue_context.plmn_id[2] = '0' + e_msg->attach_accept.guti.guti.mccdigit3;
+                // ue_context_p->ue_context.plmn_id[3] = '0' + e_msg->attach_accept.guti.guti.mncdigit1;
+                // ue_context_p->ue_context.plmn_id[4] = '0' + e_msg->attach_accept.guti.guti.mncdigit2;
+                // ue_context_p->ue_context.plmn_id[5] = '\0';
+                // if (e_msg->attach_accept.guti.guti.mncdigit3 != 0xF) {
+                //   ue_context_p->ue_context.plmn_id[5] = '0' + e_msg->attach_accept.guti.guti.mncdigit3;
+                //   ue_context_p->ue_context.plmn_id[6] = '\0';
+                // }
+              }
 
-    //         pdu_buff -= e_head_size;
-    //         if (size > 1) {
-    //           pdu_buff -= size;
-    //         }
-    //       }
-    //     }
-    //   }
-    //   free(pdu_buff);
-    // }
+              ESM_msg esm_msg;
+              esm_msg_decode(&esm_msg,
+                              e_msg->attach_accept.esmmessagecontainer.esmmessagecontainercontents.value,
+                              e_msg->attach_accept.esmmessagecontainer.esmmessagecontainercontents.length);
+
+              printf("\n\n %s \n\n", dump_octet_string(&esm_msg.activate_default_eps_bearer_context_request.pdnaddress.pdnaddressinformation));
+            }
+
+            pdu_buff -= e_head_size;
+            if (size > 1) {
+              pdu_buff -= size;
+            }
+          }
+        }
+      }
+      free(pdu_buff);
+    }
     /* PLMN ID extraction end*/
 
     {
