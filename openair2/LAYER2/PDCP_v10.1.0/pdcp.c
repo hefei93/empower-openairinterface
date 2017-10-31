@@ -68,6 +68,23 @@
 extern int otg_enabled;
 #endif
 
+// #include <sys/types.h>
+// #include <sys/socket.h>
+// #include <netinet/in.h>
+// #include <arpa/inet.h>
+// #include <netdb.h>
+// #include <stdio.h>
+// #include <stdlib.h>
+// #include <string.h>
+// #include <errno.h>
+// #include <unistd.h>
+
+// #define WIRESHARK_PORT 3490
+// #define WIRESHARK_IP "127.0.0.1"
+// struct sockaddr_in si_other;
+// int w_s, slen = sizeof(si_other);
+
+#include "wlan_pdcp.h"
 
 //-----------------------------------------------------------------------------
 /*
@@ -115,6 +132,15 @@ boolean_t pdcp_data_req(
     return FALSE;
   }
 
+  if (!srb_flagP) {
+    // char buf[sdu_buffer_sizeP];
+    // memcpy(&buf, sdu_buffer_pP, sdu_buffer_sizeP);
+    // sendto(w_s, buf, sdu_buffer_sizeP, 0, (struct sockaddr*)&si_other, slen);
+    // if (wlan_pdcp_send(sdu_buffer_sizeP, sdu_buffer_pP) < 0) {
+    //   return TRUE;
+    // }
+  }
+
   /*
    * XXX MAX_IP_PACKET_SIZE is 4096, shouldn't this be MAX SDU size, which is 8188 bytes?
    */
@@ -125,7 +151,7 @@ boolean_t pdcp_data_req(
     // XXX What does following call do?
     mac_xface->macphy_exit("PDCP sdu buffer size > MAX_IP_PACKET_SIZE");
   }
-  
+
   if (modeP == PDCP_TRANSMISSION_MODE_TRANSPARENT) {
     AssertError (rb_idP < NB_RB_MBMS_MAX, return FALSE, "RB id is too high (%u/%d) %u %u!\n", rb_idP, NB_RB_MBMS_MAX, ctxt_pP->module_id, ctxt_pP->rnti);
   } else {
@@ -151,7 +177,7 @@ boolean_t pdcp_data_req(
     // instance for a given RB is configured
     ctxt_pP->configured=TRUE;
   }
-    
+
   if (ctxt_pP->enb_flag == ENB_FLAG_NO) {
     start_meas(&eNB_pdcp_stats[ctxt_pP->module_id].data_req);
   } else {
@@ -440,7 +466,6 @@ pdcp_data_ind(
   MessageDef  *message_p        = NULL;
   uint8_t     *gtpu_buffer_p    = NULL;
 #endif
-
 
   VCD_SIGNAL_DUMPER_DUMP_FUNCTION_BY_NAME(VCD_SIGNAL_DUMPER_FUNCTIONS_PDCP_DATA_IND,VCD_FUNCTION_IN);
 
@@ -755,6 +780,19 @@ pdcp_data_ind(
 
 #endif
 
+  if (!srb_flagP) {
+    // char buf[sdu_buffer_sizeP - payload_offset];
+    // memcpy(&buf, &sdu_buffer_pP->data[payload_offset], sdu_buffer_sizeP - payload_offset);
+    // sendto(w_s, buf, sdu_buffer_sizeP - payload_offset, 0, (struct sockaddr*)&si_other, slen);
+
+    // wlan_pdcp_send(sdu_buffer_sizeP - payload_offset, &sdu_buffer_pP->data[payload_offset]);
+  }
+
+  if (!srb_flagP) {
+    // if (check_ul_pkt_ip(&sdu_buffer_pP->data[payload_offset], sdu_buffer_sizeP - payload_offset) < 0) {
+    //   return TRUE;
+    // }
+  }
 
   // XXX Decompression would be done at this point
 
@@ -924,7 +962,7 @@ pdcp_run (
           RRC_DCCH_DATA_REQ (msg_p).module_id,
           RRC_DCCH_DATA_REQ (msg_p).enb_flag,
           RRC_DCCH_DATA_REQ (msg_p).rnti,
-          RRC_DCCH_DATA_REQ (msg_p).frame, 
+          RRC_DCCH_DATA_REQ (msg_p).frame,
 	  0,
 	  RRC_DCCH_DATA_REQ (msg_p).eNB_index);
         LOG_I(PDCP, PROTOCOL_CTXT_FMT"Received %s from %s: instance %d, rb_id %d, muiP %d, confirmP %d, mode %d\n",
@@ -1073,7 +1111,7 @@ rrc_pdcp_config_asn1_req (
 #if defined(Rel10) || defined(Rel14)
   ,PMCH_InfoList_r9_t*  const pmch_InfoList_r9_pP
 #endif
-  ,rb_id_t                 *const defaultDRB 
+  ,rb_id_t                 *const defaultDRB
 )
 //-----------------------------------------------------------------------------
 {
@@ -1912,6 +1950,17 @@ void pdcp_layer_init(void)
   mbms_session_id_t session_id;
   mbms_service_id_t service_id;
 #endif
+
+  // w_s = socket(AF_INET, SOCK_DGRAM, 0);
+  // memset((char *) &si_other, 0, sizeof(si_other));
+  // si_other.sin_family = AF_INET;
+  // si_other.sin_port = htons(WIRESHARK_PORT);
+  // if (inet_aton(WIRESHARK_IP, &si_other.sin_addr)==0) {
+  //   fprintf(stderr, "inet_aton() failed\n");
+  //   exit(1);
+  // }
+  // wlan_pdcp_init();
+
   /*
    * Initialize SDU list
    */
@@ -1930,9 +1979,9 @@ void pdcp_layer_init(void)
 #endif
     pdcp_eNB_UE_instance_to_rnti[instance] = NOT_A_RNTI;
   }
-  pdcp_eNB_UE_instance_to_rnti_index = 0; 
+  pdcp_eNB_UE_instance_to_rnti_index = 0;
 
-    
+
   for (instance = 0; instance < NUMBER_OF_eNB_MAX; instance++) {
 #if defined(Rel10) || defined(Rel14)
 
@@ -1968,6 +2017,8 @@ void pdcp_layer_cleanup (void)
 {
   list_free (&pdcp_sdu_list);
   hashtable_destroy(pdcp_coll_p);
+
+  // close(w_s);
 }
 
 #ifdef PDCP_USE_RT_FIFO
